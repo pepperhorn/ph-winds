@@ -95,7 +95,6 @@ interface DiagramStyle {
   look: 'solid' | 'dotted' | 'ghost';
   twoTone: boolean;            // right hand in secondary colour
   hints: boolean;
-  orient: 'vertical' | 'horizontal';  // diagram rotation, independent of card orientation
   primary: string;             // → --fc-ink (pressed keys)
   secondary: string;           // → --fc-ink-2 (right hand when twoTone)
 }
@@ -122,6 +121,7 @@ interface BoardMeta {
   title: TextField; subtitle: TextField; footer: TextField;   // board chrome
   cardText: CardText;          // defaults for every card
   style: DiagramStyle;
+  diagramOrient: 'vertical' | 'horizontal';  // board-wide only; cards cannot override
 }
 
 interface BoardState { version: 1; meta: BoardMeta; items: CardItem[] }
@@ -154,8 +154,9 @@ Single column, max width ~1200px, order top to bottom:
    - With no note selected, the preview shows a hint: "Pick a note on the keyboard below".
 3. **Board settings** (collapsible sections as chips):
    - Instrument + horn select; Written / Concert toggle; Bravura / Petaluma; columns (auto, 1–4).
+   - Diagram orientation (upright / sideways), board-wide.
    - Board title/subtitle/footer and card text defaults.
-   - **Diagram style**: variant chips (multi-select, from the instrument's `variants`), look (Solid / Dotted / Ghost), diagram orientation (upright / sideways), two-tone hands, hints, primary + secondary colour (preset swatches plus custom picker).
+   - **Diagram style**: variant chips (multi-select, from the instrument's `variants`), look (Solid / Dotted / Ghost), two-tone hands, hints, primary + secondary colour (preset swatches plus custom picker).
 4. **Board** — title and subtitle above the grid, footer below, editable in place. Grid of `WindCard`s honouring each card's scale/orientation. Drag-handle reorder (native HTML5 DnD, chordl style). Hover toolbar: edit (loads into builder), duplicate, delete. Empty state explains adding the first card.
 5. **Piano drawer** — `position: fixed` at the bottom of the viewport, full width, with a handle tab to show/hide (state kept in localStorage; page gets bottom padding while open).
    - Spans the pro range plus 2 semitones margin each side, snapped to whole octaves' white keys.
@@ -167,14 +168,14 @@ Single column, max width ~1200px, order top to bottom:
 ### Card anatomy
 
 - **Vertical**: heading, subtitle, fingering diagram, staff, footer (stacked, centred).
-- **Horizontal**: heading and subtitle on top, diagram and staff side by side, footer below. The fingering diagram rotates only via `style.orient` (independent of card orientation).
+- **Horizontal**: heading and subtitle on top, diagram and staff side by side, footer below. The fingering diagram rotates only via the board's `diagramOrient` (independent of card orientation, not overridable per card).
 - `display` hides the diagram or the staff.
 - `scale` multiplies a base width for both diagram and staff.
 - Text sizes: S/M/L map to 12/14/18px (heading), 11/12/14px (subtitle/footer).
 
 ### Rendering
 
-- Fingering: `renderFingering(layout, fingering, { title: false, variant, look, orient, twoTone: twoTone ? 'hand' : undefined, hints, width })` with CSS vars `--fc-ink`, `--fc-ink-2`, `--fc-font: Poppins`.
+- Fingering: `renderFingering(layout, fingering, { title: false, variant, look, orient: meta.diagramOrient, twoTone: twoTone ? 'hand' : undefined, hints, width })` with CSS vars `--fc-ink`, `--fc-ink-2`, `--fc-font: Poppins`.
 - Staff: Verovio renders a one-note MEI (treble clef, or the instrument's clef — bass for trombone), no time signature, whole note, with the chosen font. Results are memoised by `(pitch, clef, font, width)`.
 - Verovio loading follows chordl: dynamic `verovio/wasm` + `verovio/esm` import on the main thread, singleton promise that retries on failure, `prefetchVerovio()` after first paint unless save-data/slow connection. Fonts registered with `fontAddCustom` from zips built by `scripts/build-verovio-fonts.mjs`. While loading, the staff area shows a skeleton.
 
