@@ -41,7 +41,10 @@ export function WindCard({ card, meta, onPlay, showPlay = 'hover', className = '
       className={`wc-card group relative flex flex-col items-center gap-2 rounded-2xl border border-hairline bg-surface p-4 shadow-glow transition-shadow hover:shadow-glow-strong ${className}`}>
       <Line f={text.heading} kind="heading" cls="wc-card-heading" />
       <Line f={text.subtitle} kind="other" cls="wc-card-subtitle" />
-      <div className={`wc-card-body flex items-center justify-center gap-4 ${horizontal ? 'flex-row' : 'flex-col'}`}>
+      {/* [justify-content:safe_center]: defense in depth — if this box is ever narrower
+          than its fixed-width diagram/staff children, fall back to start-alignment
+          instead of centering, which would clip both sides equally. */}
+      <div className={`wc-card-body flex items-center [justify-content:safe_center] gap-4 ${horizontal ? 'flex-row' : 'flex-col'}`}>
         {showDiagram && (fingering
           ? <FingeringView layout={info.layout} fingering={fingering} style={style} orient={meta.diagramOrient} width={dW} />
           : <div className="wc-fingering-missing text-xs text-muted" style={{ width: dW }}>No fingering</div>)}

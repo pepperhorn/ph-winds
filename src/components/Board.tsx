@@ -27,6 +27,14 @@ export function Board({ state, onReorder, onEdit, onDuplicate, onRemove, onMeta,
   // horizontal card on a phone), fall back to start-alignment instead of
   // centering, which would overflow equally off both edges and strand the
   // left overflow somewhere a viewport can never scroll to (negative x).
+  //
+  // The item itself must never be allowed to shrink below its content size
+  // (`shrink-0`, no `min-w-0`/`max-w-full`): a shrunk item forces its own
+  // inner `.wc-card-body` (plain `justify-center`, fixed-px diagram/staff
+  // widths) narrower than its content, which then clips visually on both
+  // sides since the card's border/background only extend to the shrunk
+  // width. Oversized cards are meant to overflow and be scrolled to, not
+  // squeezed.
   const grid = meta.columns === 'auto'
     ? 'flex flex-wrap [justify-content:safe_center] items-start'
     : `grid items-start [justify-items:safe_center] ${['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4'][meta.columns]}`;
@@ -45,7 +53,7 @@ export function Board({ state, onReorder, onEdit, onDuplicate, onRemove, onMeta,
                 onDragEnd={() => { setDrag(null); setArmed(null); }}
                 onDragOver={(e) => { if (drag) e.preventDefault(); }}
                 onDrop={() => { if (drag && drag !== c.id) onReorder(drag, c.id); setDrag(null); }}
-                className={`wc-board-item group/item relative min-w-0 max-w-full ${drag === c.id ? 'opacity-40' : ''} ${selectedId === c.id ? 'rounded-2xl ring-2 ring-accent' : ''}`}>
+                className={`wc-board-item group/item relative shrink-0 ${drag === c.id ? 'opacity-40' : ''} ${selectedId === c.id ? 'rounded-2xl ring-2 ring-accent' : ''}`}>
                 <WindCard card={c} meta={meta} onPlay={(w) => onPlay(c, w)} />
                 <div data-export-hide className="wc-card-toolbar absolute -top-3 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-hairline bg-surface px-1.5 py-1 opacity-0 shadow-glow transition group-hover/item:opacity-100 group-focus-within/item:opacity-100">
                   {/* A <button> ancestor swallows the mousedown Firefox needs to arm a native drag
