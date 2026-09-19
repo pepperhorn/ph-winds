@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsePitch, pitchKey, formatPitch, toMidi, fromMidi, isBlackKey, prefersFlats } from './pitch';
+import { parsePitch, pitchKey, formatPitch, toMidi, fromMidi, isBlackKey, prefersFlats, transposePitch } from './pitch';
 
 describe('pitch', () => {
   it('parses ascii and unicode accidentals', () => {
@@ -32,5 +32,29 @@ describe('pitch', () => {
     expect(prefersFlats(-21)).toBe(true);  // E♭ bari
     expect(prefersFlats(0)).toBe(false);
     expect(prefersFlats(12)).toBe(false);
+  });
+});
+
+describe('transposePitch', () => {
+  it('clarinet-style -2', () => {
+    expect(transposePitch(parsePitch('G#4'), -2)).toEqual({ step: 'F', alter: 1, octave: 4 });
+    expect(transposePitch(parsePitch('C5'), -2)).toEqual({ step: 'B', alter: -1, octave: 4 });
+  });
+  it('alto-style -9', () => {
+    expect(transposePitch(parsePitch('C5'), -9)).toEqual({ step: 'E', alter: -1, octave: 4 });
+    expect(transposePitch(parsePitch('F#5'), -9)).toEqual({ step: 'A', alter: 0, octave: 4 });
+    expect(transposePitch(parsePitch('B3'), -9)).toEqual({ step: 'D', alter: 0, octave: 3 });
+  });
+  it('tenor-style -14', () => {
+    expect(transposePitch(parsePitch('D5'), -14)).toEqual({ step: 'C', alter: 0, octave: 4 });
+  });
+  it('bari-style -21', () => {
+    expect(transposePitch(parsePitch('C5'), -21)).toEqual({ step: 'E', alter: -1, octave: 3 });
+  });
+  it('octave-up +12 (recorder-style)', () => {
+    expect(transposePitch(parsePitch('C4'), 12)).toEqual({ step: 'C', alter: 0, octave: 5 });
+  });
+  it('unison 0', () => {
+    expect(transposePitch(parsePitch('D4'), 0)).toEqual({ step: 'D', alter: 0, octave: 4 });
   });
 });

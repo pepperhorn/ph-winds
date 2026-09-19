@@ -10,6 +10,7 @@ describe('resolve', () => {
     expect(autoHeading(parsePitch('F#4'))).toBe('F♯4');
     expect(autoSubtitle(parsePitch('C5'), -9)).toBe('sounds E♭4');
     expect(autoSubtitle(parsePitch('C5'), 0)).toBe('');
+    expect(autoSubtitle(parsePitch('G#4'), -2)).toBe('sounds F♯4');
   });
   it('card text falls back to board defaults then auto labels', () => {
     const b = alto();

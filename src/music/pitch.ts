@@ -29,3 +29,33 @@ export const isBlackKey = (midi: number) => [1, 3, 6, 8, 10].includes(((midi % 1
 
 /** Same rule as fingering-components' `sounding`: E♭, B♭ and F horns read in flats. */
 export const prefersFlats = (semis: number) => [3, 5, 10].includes(((semis % 12) + 12) % 12);
+
+/**
+ * Letter-step counts for this app's fixed set of instrument transpositions,
+ * keyed by semitone offset: 0 (unison), -2 (Bb: major 2nd down), -9 (Eb alto:
+ * major 6th down), -14 (Bb tenor: major 9th down), -21 (Eb bari: major 13th
+ * down), +12 (octave-transposing: octave up).
+ */
+const LETTER_STEPS: Record<number, number> = { 0: 0, [-2]: -1, [-9]: -5, [-14]: -8, [-21]: -12, 12: 7 };
+const ORDER: Step[] = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+
+/**
+ * True interval-based transposition (letter steps + semitones), not
+ * chromatic nearest-neighbor. Falls back to chromatic respelling for any
+ * `semis` outside this app's known instrument transpositions.
+ */
+export function transposePitch(p: Pitch, semis: number): Pitch {
+  const steps = LETTER_STEPS[semis];
+  if (steps === undefined) return fromMidi(toMidi(p) + semis, p.alter === -1 || prefersFlats(semis));
+  const targetMidi = toMidi(p) + semis;
+  const idx = ORDER.indexOf(p.step);
+  const raw = idx + steps;
+  const octaveDelta = Math.floor(raw / 7);
+  const newIdx = ((raw % 7) + 7) % 7;
+  const step = ORDER[newIdx];
+  const octave = p.octave + octaveDelta;
+  const naturalMidi = toMidi({ step, alter: 0, octave });
+  const alter = targetMidi - naturalMidi;
+  if (alter < -1 || alter > 1) return fromMidi(targetMidi, prefersFlats(semis)); // safety net, shouldn't hit for supported intervals
+  return { step, alter: alter as -1 | 0 | 1, octave };
+}
