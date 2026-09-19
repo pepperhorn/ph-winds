@@ -192,10 +192,12 @@ Single column, max width ~1200px, order top to bottom:
 
 ## Part 4b — playback (smplr)
 
-- `smplr` `Soundfont` players, lazily imported on first play, one shared `AudioContext` (created/resumed on the user gesture). Players are cached per voice with an in-flight promise map and retry after failure (chordl `audio/playback.ts` pattern).
+- `smplr` 1.x `Soundfont(ctx, { instrument, kit })` players (await `.ready`), lazily imported on first play, one shared `AudioContext` (created/resumed on the user gesture). Players are cached per voice with an in-flight promise map and retry after failure (chordl `audio/playback.ts` pattern).
+- **Load only what is needed**: nothing loads until the first play; then only the voice that was asked for (the board's instrument voice or the piano), never the full catalogue. Changing instrument drops the old voice's player.
+- **Kit**: `FluidR3_GM` (the lighter of smplr's two gleitz midi-js-soundfonts kits) for every voice. No `SplendidGrandPiano`.
 - Two voices per board:
-  - **Instrument voice**, mapped in `voices.ts`: saxophone → `soprano_sax` / `alto_sax` / `tenor_sax` / `baritone_sax` by horn; clarinet → `clarinet`; flute → `flute`; recorder → `recorder`; trumpet → `trumpet`; trombone → `trombone`; tin whistle → `whistle`; Nuvo Dood → `clarinet`; Nuvo TooT → `recorder`.
-  - **Piano** → `acoustic_grand_piano`.
+  - **Instrument voice**, mapped in `voices.ts`: saxophone → `soprano_sax` / `alto_sax` / `tenor_sax` / `baritone_sax` by horn; clarinet → `clarinet`; flute → `flute`; recorder → `recorder`; trumpet → `trumpet`; trombone → `trombone`; Nuvo Dood → `clarinet`; Nuvo TooT → `flute`; tin whistle (all keys) → `recorder` (GM has no tin whistle; GM `whistle` is a human whistle).
+  - **Piano** → `acoustic_grand_piano` from `FluidR3_GM` (small multisample, not the Splendid grand).
 - Always plays **sounding (concert) pitch**: `midi = toMidi(written) + transposeFor(layout, horn)`, whatever the board's pitch mode. So both buttons play the same pitch in different timbres.
 - One note, ~1.5 s, a new play stops the previous note.
 - UI:
