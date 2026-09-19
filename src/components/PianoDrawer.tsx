@@ -22,7 +22,7 @@ export function PianoDrawer({ open, onToggle, soundOnClick, onSoundOnClick, soun
             <i className="wc-legend-swatch inline-block size-3 rounded bg-band-pro" /> Pro
           </span>
           <label className="wc-sound-toggle ml-auto flex items-center gap-2">
-            <input type="checkbox" checked={soundOnClick} onChange={(e) => onSoundOnClick(e.target.checked)} /> Sound on click
+            <input className="wc-sound-toggle-input" type="checkbox" checked={soundOnClick} onChange={(e) => onSoundOnClick(e.target.checked)} /> Sound on click
           </label>
           <select className="wc-sound-voice rounded-md border border-hairline bg-surface px-2 py-1" value={soundVoice}
             onChange={(e) => onSoundVoice(e.target.value as 'voice' | 'piano')} disabled={!soundOnClick}>
