@@ -194,9 +194,12 @@ Single column, max width ~1200px, order top to bottom:
 
 - `smplr` 1.x `Soundfont(ctx, { instrument, kit })` players (await `.ready`), lazily imported on first play, one shared `AudioContext` (created/resumed on the user gesture). Players are cached per voice with an in-flight promise map and retry after failure (chordl `audio/playback.ts` pattern).
 - **Load only what is needed**: nothing loads until the first play; then only the voice that was asked for (the board's instrument voice or the piano), never the full catalogue. Changing instrument drops the old voice's player.
-- **Kit**: `FluidR3_GM` (the lighter of smplr's two gleitz midi-js-soundfonts kits) for every voice. No `SplendidGrandPiano`.
+- **Sources** (all allow commercial use):
+  - `FluidR3_GM` via smplr `Soundfont` (the lighter of smplr's two gleitz midi-js-soundfonts kits; FluidR3 is MIT, gleitz renders CC BY 3.0) for every voice except the fipple/recorder voice. No `SplendidGrandPiano`.
+  - **VCSL** (Versilian Community Sample Library, **CC0**) via smplr `Versilian`, instrument `Aerophones/Edge-blown Aerophones/Baroque Soprano Recorder/Sustain`, for recorder and all tin whistles. Loads only that one SFZ and its samples from `smpldsnds.github.io/sgossner-vcsl`. smplr marks Versilian support as partial, so if it fails to load or the note is out of its sample range, fall back to `FluidR3_GM` `recorder`.
+  - An About/credits dialog lists FluidR3 (Frank Wen), gleitz midi-js-soundfonts, VCSL (Sam Gossner) and Verovio/SMuFL fonts.
 - Two voices per board:
-  - **Instrument voice**, mapped in `voices.ts`: saxophone → `soprano_sax` / `alto_sax` / `tenor_sax` / `baritone_sax` by horn; clarinet → `clarinet`; flute → `flute`; recorder → `recorder`; trumpet → `trumpet`; trombone → `trombone`; Nuvo Dood → `clarinet`; Nuvo TooT → `flute`; tin whistle (all keys) → `recorder` (GM has no tin whistle; GM `whistle` is a human whistle).
+  - **Instrument voice**, mapped in `voices.ts`: saxophone → `soprano_sax` / `alto_sax` / `tenor_sax` / `baritone_sax` by horn; clarinet → `clarinet`; flute → `flute`; recorder → VCSL soprano recorder; trumpet → `trumpet`; trombone → `trombone`; Nuvo Dood → `clarinet`; Nuvo TooT → `flute`; tin whistle (all keys) → VCSL soprano recorder (GM has no tin whistle and GM `whistle` is a human whistle; the only tin whistle sample set found, MF Tin Whistle, is CC BY-NC-SA, so it is excluded).
   - **Piano** → `acoustic_grand_piano` from `FluidR3_GM` (small multisample, not the Splendid grand).
 - Always plays **sounding (concert) pitch**: `midi = toMidi(written) + transposeFor(layout, horn)`, whatever the board's pitch mode. So both buttons play the same pitch in different timbres.
 - One note, ~1.5 s, a new play stops the previous note.
@@ -204,7 +207,7 @@ Single column, max width ~1200px, order top to bottom:
   - Each card (board and builder preview) shows two small icon buttons, "Play voice" and "Play piano", visible on hover/focus and always in the preview. Hidden in PNG/PDF export.
   - Piano drawer has a "Sound on click" toggle (default on, remembered) with a voice/piano choice; clicking a key selects it and plays it.
   - While a voice loads, its button shows a spinner; load failure shows a toast and leaves the UI usable.
-- Unit tests: voice mapping for every instrument/horn; sounding midi for transposing horns (alto written C5 → concert E♭4 = midi 63).
+- Unit tests: voice mapping (source + name) for every instrument/horn; VCSL→FluidR3 fallback; sounding midi for transposing horns (alto written C5 → concert E♭4 = midi 63).
 
 ## Part 5 — persistence and export
 
