@@ -34,7 +34,6 @@
 //
 // Usage: node scripts/build-verovio-fonts.mjs [Bravura Petaluma ...]
 import { writeFile, mkdir, rm } from "node:fs/promises";
-import { createWriteStream } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";

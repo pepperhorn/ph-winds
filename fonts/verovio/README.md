@@ -26,10 +26,10 @@ Both fonts are licensed under the SIL Open Font License (see `../OFL.txt`):
 ## Regenerating
 
 The zips are assembled from the upstream Verovio font data and then embedded as
-base64 in `src/verovio-fonts.generated.ts`:
+base64 in `src/notation/verovio-fonts.generated.ts`:
 
 ```sh
-pnpm --filter @pepperhorn/chordl-react fonts:build
+node scripts/build-verovio-fonts.mjs && node scripts/embed-verovio-fonts.mjs
 ```
 
 `scripts/build-verovio-fonts.mjs` needs a `zip` binary on PATH, fetches the font

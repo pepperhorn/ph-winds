@@ -55,7 +55,7 @@ cmds = ["pnpm install --frozen-lockfile"]
 cmds = ["pnpm build"]
 
 [start]
-cmd = "npx serve dist -l 3000"
+cmd = "npx serve@14 dist -l 3000"
 ```
 
 `public/healthz` is a static file served at `/healthz` for Coolify's health

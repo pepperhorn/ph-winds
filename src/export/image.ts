@@ -34,6 +34,6 @@ export async function exportBoardImage(el: HTMLElement, kind: 'png' | 'pdf', nam
   const pdf = new jsPDF({ orientation: landscape ? 'landscape' : 'portrait', unit: 'pt', format: 'a4' });
   const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight(), m = 24;
   const s = Math.min((pw - 2 * m) / img.width, (ph - 2 * m) / img.height);
-  pdf.addImage(png, 'PNG', (pw - img.width * s) / 2, m, img.width * s, img.height * s);
+  pdf.addImage(png, 'PNG', (pw - img.width * s) / 2, m, img.width * s, img.height * s, undefined, 'FAST');
   pdf.save(`${slug(name)}.pdf`);
 }
