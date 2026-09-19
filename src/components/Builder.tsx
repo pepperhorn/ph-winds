@@ -41,7 +41,7 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay 
             {options.map((f, i) => (
               <button key={i} type="button" role="radio" aria-checked={draft?.fingeringIndex === i} aria-label={`Fingering ${i + 1}`}
                 onClick={() => set({ fingeringIndex: i })}
-                className={`wc-alternate rounded-xl border p-1.5 transition ${draft?.fingeringIndex === i ? 'border-accent shadow-glow-strong' : 'border-hairline hover:shadow-glow'}`}>
+                className={`wc-alternate btn-alternate rounded-xl border p-1.5 transition ${draft?.fingeringIndex === i ? 'border-accent shadow-glow-strong' : 'border-hairline hover:shadow-glow'}`}>
                 <FingeringView layout={layout} fingering={f} style={resolveStyle(draft ?? {}, meta)} orient={meta.diagramOrient} width={44} />
               </button>
             ))}
