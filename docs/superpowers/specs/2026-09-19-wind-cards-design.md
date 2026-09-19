@@ -13,8 +13,9 @@ In:
 - Changes to `fingering-components`: skill-level range data, verification, publish to npm as `@pepperhorn/fingering-components`.
 - New app `ph-winds`: Astro 7 + one React 19 island, Tailwind v4, Poppins, Verovio (Bravura + Petaluma).
 - One board in localStorage, JSON import/export, PNG/PDF export.
+- Single-note playback with smplr: instrument voice and piano, at sounding pitch.
 
-Out (YAGNI): multiple saved boards, share links, playback/audio, text-only cards, dark mode, accounts/backend.
+Out (YAGNI): multiple saved boards, share links, sequenced/multi-note playback, audio export, text-only cards, dark mode, accounts/backend.
 
 ## Part 0 — fingering-components changes
 
@@ -70,6 +71,9 @@ src/
     WindCard.tsx                one card (used by preview and board)
     PianoDrawer.tsx             fixed bottom drawer
     PianoKeyboard.tsx           SVG keyboard with range bands
+  audio/
+    playback.ts                 smplr Soundfont loader + playNote(voice, midi)
+    voices.ts                   instrument/horn → GM soundfont voice
   export/
     image.ts                    PNG/PDF via html-to-image + jsPDF
 scripts/build-verovio-fonts.mjs
@@ -186,6 +190,20 @@ Single column, max width ~1200px, order top to bottom:
 - One bright blue-violet accent, used for focus rings, selected key glow and primary buttons.
 - Poppins throughout; Material-like controls (segmented buttons, filled/tonal buttons, sliders, chips) built with Tailwind.
 
+## Part 4b — playback (smplr)
+
+- `smplr` `Soundfont` players, lazily imported on first play, one shared `AudioContext` (created/resumed on the user gesture). Players are cached per voice with an in-flight promise map and retry after failure (chordl `audio/playback.ts` pattern).
+- Two voices per board:
+  - **Instrument voice**, mapped in `voices.ts`: saxophone → `soprano_sax` / `alto_sax` / `tenor_sax` / `baritone_sax` by horn; clarinet → `clarinet`; flute → `flute`; recorder → `recorder`; trumpet → `trumpet`; trombone → `trombone`; tin whistle → `whistle`; Nuvo Dood → `clarinet`; Nuvo TooT → `recorder`.
+  - **Piano** → `acoustic_grand_piano`.
+- Always plays **sounding (concert) pitch**: `midi = toMidi(written) + transposeFor(layout, horn)`, whatever the board's pitch mode. So both buttons play the same pitch in different timbres.
+- One note, ~1.5 s, a new play stops the previous note.
+- UI:
+  - Each card (board and builder preview) shows two small icon buttons, "Play voice" and "Play piano", visible on hover/focus and always in the preview. Hidden in PNG/PDF export.
+  - Piano drawer has a "Sound on click" toggle (default on, remembered) with a voice/piano choice; clicking a key selects it and plays it.
+  - While a voice loads, its button shows a spinner; load failure shows a toast and leaves the UI usable.
+- Unit tests: voice mapping for every instrument/horn; sounding midi for transposing horns (alto written C5 → concert E♭4 = midi 63).
+
 ## Part 5 — persistence and export
 
 - `StorageAdapter { load(): BoardState | null; save(s: BoardState): void }`; `localStorageAdapter('ph-winds-board', { onError })` never throws, reports quota errors via a toast.
@@ -196,7 +214,7 @@ Single column, max width ~1200px, order top to bottom:
 
 - **fingering-components**: `verify.mjs` range checks (Part 0).
 - **Vitest** (ph-winds): pitch parse/format and written⇄concert per instrument/horn; `rangeBands` output; `fingeringsFor` including alternates, altissimo merge and whistle horn files; JSON import validation (valid, missing fields, bad version); card text resolution (override → default → auto label).
-- **Playwright smoke**: choose alto sax, click a piano key, pick an alternate, add card, reload and confirm the card persists; switch to Petaluma and confirm the staff `<svg>` renders.
+- **Playwright smoke**: choose alto sax, click a piano key, pick an alternate, add card, reload and confirm the card persists; click Play voice and confirm no error (audio stubbed); switch to Petaluma and confirm the staff `<svg>` renders.
 
 ## Part 7 — deployment
 
@@ -212,4 +230,5 @@ Single column, max width ~1200px, order top to bottom:
 4. State, storage, JSON io with tests.
 5. Verovio loader + `StaffNote`.
 6. `WindCard`, then Builder, BoardSettings, Board, PianoDrawer.
-7. Export, Playwright smoke, deploy config.
+7. smplr playback.
+8. Export, Playwright smoke, deploy config.
