@@ -6,12 +6,15 @@ export interface StorageAdapter { load(): BoardState | null; save(s: BoardState)
 export function localStorageAdapter(key = 'ph-winds-board', opts: { onError?: (e: unknown) => void } = {}): StorageAdapter {
   return {
     load() {
+      let raw: string | null;
+      try { raw = localStorage.getItem(key); } catch { return null; }
+      if (!raw) return null;
       try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return null;
         const r = parseBoard(JSON.parse(raw));
-        return r.ok ? r.state : null;
-      } catch { return null; }
+        if (r.ok) return r.state;
+      } catch { /* fall through to backup */ }
+      try { localStorage.setItem(`${key}-backup`, raw); } catch { /* ignore quota errors on backup */ }
+      return null;
     },
     save(s) {
       try { localStorage.setItem(key, JSON.stringify(s)); } catch (e) { opts.onError?.(e); }

@@ -14,6 +14,17 @@ describe('storage', () => {
     localStorage.setItem('t', '{nope');
     expect(localStorageAdapter('t').load()).toBeNull();
   });
+  it('backs up corrupt (unparsable) data before returning null', () => {
+    localStorage.setItem('t', '{nope');
+    expect(localStorageAdapter('t').load()).toBeNull();
+    expect(localStorage.getItem('t-backup')).toBe('{nope');
+  });
+  it('backs up data that parses but fails board validation before returning null', () => {
+    const raw = JSON.stringify({ version: 2 });
+    localStorage.setItem('t', raw);
+    expect(localStorageAdapter('t').load()).toBeNull();
+    expect(localStorage.getItem('t-backup')).toBe(raw);
+  });
   it('reports quota errors without throwing', () => {
     const onError = vi.fn();
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
