@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { BoardMeta, BoardState, CardItem, TextField } from '@/state/types';
 import { WindCard } from './WindCard';
 
@@ -15,14 +15,29 @@ function ChromeInput({ f, onChange, cls, sizes, placeholder, weight }:
   );
 }
 
-export function Board({ state, onReorder, onEdit, onDuplicate, onRemove, onMeta, onPlay, selectedId }: {
+export function Board({ state, onReorder, onEdit, onDuplicate, onRemove, onMeta, onPlay, selectedId, loading }: {
   state: BoardState; selectedId?: string;
   onReorder(fromId: string, toId: string): void; onEdit(id: string): void; onDuplicate(id: string): void; onRemove(id: string): void;
   onMeta(p: Partial<BoardMeta>): void; onPlay(card: CardItem, which: 'voice' | 'piano'): void;
+  loading?: { key: string; which: 'voice' | 'piano' } | null;
 }) {
   const { meta, items } = state;
   const [drag, setDrag] = useState<string | null>(null);
   const [armed, setArmed] = useState<string | null>(null);
+
+  // Safety net: if the pointer is released off the drag handle (no
+  // setPointerCapture), the handle's own onPointerUp never fires and
+  // `armed` would otherwise leak `true`, leaving that card spuriously
+  // draggable. Clear it on any window-level pointerup/pointercancel.
+  useEffect(() => {
+    const clear = () => setArmed(null);
+    window.addEventListener('pointerup', clear);
+    window.addEventListener('pointercancel', clear);
+    return () => {
+      window.removeEventListener('pointerup', clear);
+      window.removeEventListener('pointercancel', clear);
+    };
+  }, []);
   // "safe" centering: when the row is narrower than its content (e.g. a 150%
   // horizontal card on a phone), fall back to start-alignment instead of
   // centering, which would overflow equally off both edges and strand the
@@ -47,14 +62,16 @@ export function Board({ state, onReorder, onEdit, onDuplicate, onRemove, onMeta,
         ? <p className="wc-board-empty py-16 text-center text-sm text-muted">Pick a note on the keyboard, then &ldquo;Add to board&rdquo;.</p>
         : (
           <div className={`wc-board-grid mt-6 gap-5 overflow-x-auto ${grid}`}>
-            {items.map((c) => (
+            {items.map((c) => {
+              const loadingPlay = loading?.key === c.id ? loading.which : undefined;
+              return (
               <div key={c.id} draggable={armed === c.id}
                 onDragStart={(e) => { setDrag(c.id); e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; }}
                 onDragEnd={() => { setDrag(null); setArmed(null); }}
                 onDragOver={(e) => { if (drag) e.preventDefault(); }}
-                onDrop={() => { if (drag && drag !== c.id) onReorder(drag, c.id); setDrag(null); }}
+                onDrop={(e) => { e.preventDefault(); if (drag && drag !== c.id) onReorder(drag, c.id); setDrag(null); }}
                 className={`wc-board-item group/item relative shrink-0 ${drag === c.id ? 'opacity-40' : ''} ${selectedId === c.id ? 'rounded-2xl ring-2 ring-accent' : ''}`}>
-                <WindCard card={c} meta={meta} onPlay={(w) => onPlay(c, w)} />
+                <WindCard card={c} meta={meta} onPlay={(w) => onPlay(c, w)} loadingPlay={loadingPlay} />
                 <div data-export-hide className="wc-card-toolbar absolute -top-3 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-hairline bg-surface px-1.5 py-1 opacity-0 shadow-glow transition group-hover/item:opacity-100 group-focus-within/item:opacity-100">
                   {/* A <button> ancestor swallows the mousedown Firefox needs to arm a native drag
                       gesture, so the handle is a role="button" span, not a real button. */}
@@ -65,7 +82,8 @@ export function Board({ state, onReorder, onEdit, onDuplicate, onRemove, onMeta,
                   <button type="button" aria-label="Delete card" onClick={() => onRemove(c.id)} className="wc-card-delete-btn btn-delete px-1.5 text-xs text-red-500">✕</button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       <div className="wc-board-footer-row mt-6"><ChromeInput f={meta.footer} cls="wc-board-footer text-muted" sizes={SMALL} weight="font-normal" placeholder="Footer" onChange={(p) => onMeta({ footer: { ...meta.footer, ...p } })} /></div>

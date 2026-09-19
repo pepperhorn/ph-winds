@@ -38,4 +38,9 @@ describe('WindCard', () => {
     render(<WindCard card={newCardDraft(parsePitch('C2'))} meta={meta} />);
     expect(screen.getByText('No fingering')).toBeInTheDocument();
   });
+  it('marks the play-voice button as busy while its voice loads', () => {
+    render(<WindCard card={newCardDraft(parsePitch('C5'))} meta={meta} onPlay={vi.fn()} showPlay="always" loadingPlay="voice" />);
+    expect(screen.getByRole('button', { name: 'Play voice' })).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByRole('button', { name: 'Play piano' })).toHaveAttribute('aria-busy', 'false');
+  });
 });

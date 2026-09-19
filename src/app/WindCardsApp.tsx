@@ -4,12 +4,13 @@ import { localStorageAdapter } from '@/state/storage';
 import { newCardDraft, createBoard } from '@/state/defaults';
 import { exportBoardJson, importBoardJson } from '@/state/io';
 import type { CardItem } from '@/state/types';
-import { playableMidis, rangeBands, semitones, spellWritten } from '@/music/instruments';
+import { playableMidis, rangeBands, semitones, spellWritten as spellWrittenPitch } from '@/music/instruments';
 import { prefersFlats, toMidi, type Pitch } from '@/music/pitch';
 import { instrumentVoice, PIANO_VOICE, soundingMidi } from '@/audio/voices';
 import { playNote, releaseVoicesExcept } from '@/audio/playback';
 import { prefetchVerovioWhenIdle } from '@/notation/verovio';
 import { exportBoardImage, downloadText } from '@/export/image';
+import { ErrorBoundary } from './ErrorBoundary';
 import { AppBar } from '@/components/AppBar';
 import { AboutDialog } from '@/components/AboutDialog';
 import { Board } from '@/components/Board';
@@ -22,7 +23,7 @@ import { useToast } from '@/components/Toast';
 const readPref = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
 const writePref = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } };
 
-export default function WindCardsApp() {
+function WindCardsApp() {
   const { toast, node: toastNode } = useToast();
   const storage = useMemo(
     () => localStorageAdapter('ph-winds-board', { onError: () => toast('Could not save — browser storage is full') }),
@@ -32,6 +33,7 @@ export default function WindCardsApp() {
   const { state } = board;
   const { meta } = state;
   const [draft, setDraft] = useState<BuilderDraft | null>(null);
+  const [loading, setLoading] = useState<{ key: string; which: 'voice' | 'piano' } | null>(null);
   const [pianoOpen, setPianoOpen] = useState(() => readPref('ph-winds-piano-open', true));
   const [soundOnClick, setSoundOnClick] = useState(() => readPref('ph-winds-sound-on-click', true));
   const [soundVoice, setSoundVoice] = useState<'voice' | 'piano'>(() => readPref('ph-winds-sound-voice', 'voice'));
@@ -47,15 +49,18 @@ export default function WindCardsApp() {
   const bands = useMemo(() => rangeBands(meta.instrument, meta.horn), [meta.instrument, meta.horn]);
   const playable = useMemo(() => playableMidis(meta.instrument, meta.horn), [meta.instrument, meta.horn]);
 
-  const play = useCallback((pitch: Pitch, which: 'voice' | 'piano') => {
+  const play = useCallback((pitch: Pitch, which: 'voice' | 'piano', key: string) => {
     const voice = which === 'piano' ? PIANO_VOICE : instrumentVoice(meta.instrument, meta.horn);
-    playNote(voice, soundingMidi(pitch, meta.instrument, meta.horn)).catch(() => toast('Could not load that sound'));
+    setLoading({ key, which });
+    playNote(voice, soundingMidi(pitch, meta.instrument, meta.horn))
+      .catch(() => toast('Could not load that sound'))
+      .finally(() => setLoading(null));
   }, [meta.instrument, meta.horn, toast]);
 
   const selectNote = (writtenMidi: number) => {
-    const pitch = spellWritten(meta.instrument, meta.horn, writtenMidi);
+    const pitch = spellWrittenPitch(meta.instrument, meta.horn, writtenMidi);
     setDraft((d) => (d ? { ...d, pitch, fingeringIndex: 0 } : newCardDraft(pitch)));
-    if (soundOnClick) play(pitch, soundVoice);
+    if (soundOnClick) play(pitch, soundVoice, 'draft');
   };
 
   const commit = () => {
@@ -92,21 +97,31 @@ export default function WindCardsApp() {
         onExportPng={() => exportImage('png')} onExportPdf={() => exportImage('pdf')} />
       <main className="wc-main mx-auto max-w-[1200px] space-y-6 px-6">
         <Builder draft={draft} meta={meta} onChange={setDraft} onCommit={commit} onCancelEdit={() => setDraft(null)}
-          onPlay={(w) => draft && play(draft.pitch, w)} />
+          onPlay={(w) => draft && play(draft.pitch, w, 'draft')}
+          loadingPlay={loading?.key === 'draft' ? loading.which : undefined} />
         <BoardSettings meta={meta} hasCards={state.items.length > 0} onMeta={board.setMeta}
           onInstrument={(id, horn) => { board.setInstrument(id, horn); setDraft(null); }} />
         <Board state={state} selectedId={draft?.editingId} onReorder={board.reorder} onEdit={edit}
           onDuplicate={board.duplicateCard} onRemove={board.removeCard} onMeta={board.setMeta}
-          onPlay={(c: CardItem, w) => play(c.pitch, w)} />
+          onPlay={(c: CardItem, w) => play(c.pitch, w, c.id)} loading={loading} />
       </main>
       <PianoDrawer open={pianoOpen} onToggle={() => setPianoOpen(!pianoOpen)}
         soundOnClick={soundOnClick} onSoundOnClick={setSoundOnClick} soundVoice={soundVoice} onSoundVoice={setSoundVoice}>
         <PianoKeyboard bands={bands} offset={meta.pitchMode === 'concert' ? semis : 0} playable={playable}
           selected={draft ? toMidi(draft.pitch) : undefined} preferFlats={meta.pitchMode === 'concert' && prefersFlats(semis)}
+          mode={meta.pitchMode} spellWritten={(m) => spellWrittenPitch(meta.instrument, meta.horn, m)}
           onSelect={selectNote} />
       </PianoDrawer>
       <AboutDialog open={about} onClose={() => setAbout(false)} />
       {toastNode}
     </div>
+  );
+}
+
+export default function WindCardsAppWithBoundary() {
+  return (
+    <ErrorBoundary>
+      <WindCardsApp />
+    </ErrorBoundary>
   );
 }

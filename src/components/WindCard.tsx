@@ -21,10 +21,11 @@ export interface WindCardProps {
   meta: BoardMeta;
   onPlay?: (which: 'voice' | 'piano') => void;
   showPlay?: 'hover' | 'always';
+  loadingPlay?: 'voice' | 'piano';
   className?: string;
 }
 
-export function WindCard({ card, meta, onPlay, showPlay = 'hover', className = '' }: WindCardProps) {
+export function WindCard({ card, meta, onPlay, showPlay = 'hover', loadingPlay, className = '' }: WindCardProps) {
   const info = getInstrument(meta.instrument);
   const text = resolveCardText(card, meta);
   const style = resolveStyle(card, meta);
@@ -53,10 +54,14 @@ export function WindCard({ card, meta, onPlay, showPlay = 'hover', className = '
       <Line f={text.footer} kind="other" cls="wc-card-footer" />
       {onPlay && (
         <div data-export-hide className={`wc-card-play absolute right-2 top-2 flex gap-1 ${showPlay === 'hover' ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100' : ''}`}>
-          <button type="button" aria-label="Play voice" onClick={() => onPlay('voice')}
-            className="btn-play-voice grid size-7 place-items-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-white">♪</button>
-          <button type="button" aria-label="Play piano" onClick={() => onPlay('piano')}
-            className="btn-play-piano grid size-7 place-items-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-white">🎹</button>
+          <button type="button" aria-label="Play voice" aria-busy={loadingPlay === 'voice'} onClick={() => onPlay('voice')}
+            className="btn-play-voice grid size-7 place-items-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-white">
+            {loadingPlay === 'voice' ? <span className="wc-play-spinner size-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden="true" /> : '♪'}
+          </button>
+          <button type="button" aria-label="Play piano" aria-busy={loadingPlay === 'piano'} onClick={() => onPlay('piano')}
+            className="btn-play-piano grid size-7 place-items-center rounded-full bg-accent-soft text-accent hover:bg-accent hover:text-white">
+            {loadingPlay === 'piano' ? <span className="wc-play-spinner size-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden="true" /> : '🎹'}
+          </button>
         </div>
       )}
     </div>

@@ -10,9 +10,10 @@ import { Button, Segmented, Slider } from './ui';
 
 export interface BuilderDraft extends CardDraft { editingId?: string }
 
-export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay }: {
+export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay, loadingPlay }: {
   draft: BuilderDraft | null; meta: BoardMeta;
   onChange(d: BuilderDraft): void; onCommit(): void; onCancelEdit(): void; onPlay(which: 'voice' | 'piano'): void;
+  loadingPlay?: 'voice' | 'piano';
 }) {
   const set = (p: Partial<BuilderDraft>) => draft && onChange({ ...draft, ...p });
   const options = draft ? fingeringsFor(meta.instrument, meta.horn, toMidi(draft.pitch)) : [];
@@ -24,7 +25,7 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay 
     <section className="wc-builder grid gap-6 rounded-3xl border border-hairline bg-surface/80 p-6 shadow-glow backdrop-blur md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
       <div className="wc-builder-preview grid min-h-64 place-items-center rounded-2xl bg-canvas p-4">
         {draft
-          ? <WindCard card={draft} meta={meta} onPlay={onPlay} showPlay="always" />
+          ? <WindCard card={draft} meta={meta} onPlay={onPlay} showPlay="always" loadingPlay={loadingPlay} />
           : <p className="wc-builder-empty text-sm text-muted">Pick a note on the keyboard below</p>}
       </div>
       <div className="wc-builder-controls space-y-4">

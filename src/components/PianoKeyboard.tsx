@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RangeBands } from '@/music/instruments';
-import { formatPitch, fromMidi } from '@/music/pitch';
+import { formatPitch, fromMidi, type Pitch } from '@/music/pitch';
 import { bandOf, keyboardSpan, layoutKeys } from './pianoLayout';
 
 const BAND_FILL = { beginner: 'var(--color-band-beginner)', intermediate: 'var(--color-band-intermediate)', pro: 'var(--color-band-pro)' };
@@ -9,10 +9,11 @@ const MIN_WHITE_W = 18, MAX_WHITE_W = 36, DEFAULT_WHITE_W = 22;
 
 export interface PianoKeyboardProps {
   bands: RangeBands; offset: number; playable: Set<number>; selected?: number; preferFlats: boolean;
+  mode: 'written' | 'concert'; spellWritten: (writtenMidi: number) => Pitch;
   onSelect(writtenMidi: number): void;
 }
 
-export function PianoKeyboard({ bands, offset, playable, selected, preferFlats, onSelect }: PianoKeyboardProps) {
+export function PianoKeyboard({ bands, offset, playable, selected, preferFlats, mode, spellWritten, onSelect }: PianoKeyboardProps) {
   // everything is laid out in *display* midi (written + offset)
   const shifted = {
     beginner: { low: bands.beginner.low + offset, high: bands.beginner.high + offset },
@@ -49,7 +50,7 @@ export function PianoKeyboard({ bands, offset, playable, selected, preferFlats, 
     const band = bandOf(k.midi, shifted);
     const enabled = band !== null && playable.has(written);
     const isSel = selected === written;
-    const label = formatPitch(fromMidi(k.midi, preferFlats));
+    const label = mode === 'written' ? formatPitch(spellWritten(written)) : formatPitch(fromMidi(k.midi, preferFlats));
     const fill = isSel
       ? 'var(--color-accent)'
       : k.black

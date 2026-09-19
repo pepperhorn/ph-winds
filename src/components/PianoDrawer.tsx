@@ -14,7 +14,7 @@ export function PianoDrawer({ open, onToggle, soundOnClick, onSoundOnClick, soun
           {open ? 'Hide keyboard ▾' : 'Show keyboard ▴'}
         </button>
       </div>
-      <div className="wc-piano-panel border-t border-hairline bg-surface/95 px-4 pb-4 pt-3 shadow-[0_-8px_30px_-12px_rgb(109_93_252/.35)] backdrop-blur">
+      <div className="wc-piano-panel border-t border-hairline bg-surface/95 px-4 pb-4 pt-3 shadow-[0_-8px_30px_-12px_rgb(109_93_252/.35)] backdrop-blur" inert={!open ? true : undefined}>
         <div className="wc-piano-toolbar mb-2 flex flex-wrap items-center gap-4 text-xs text-muted">
           <span className="wc-piano-legend flex items-center gap-3">
             <i className="wc-legend-swatch inline-block size-3 rounded bg-band-beginner" /> Beginner
@@ -26,8 +26,8 @@ export function PianoDrawer({ open, onToggle, soundOnClick, onSoundOnClick, soun
           </label>
           <select className="wc-sound-voice rounded-md border border-hairline bg-surface px-2 py-1" value={soundVoice}
             onChange={(e) => onSoundVoice(e.target.value as 'voice' | 'piano')} disabled={!soundOnClick}>
-            <option value="voice">Instrument</option>
-            <option value="piano">Piano</option>
+            <option className="wc-sound-voice-option wc-sound-voice-option--instrument" value="voice">Instrument</option>
+            <option className="wc-sound-voice-option wc-sound-voice-option--piano" value="piano">Piano</option>
           </select>
         </div>
         {children}

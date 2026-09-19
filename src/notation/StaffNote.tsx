@@ -20,6 +20,7 @@ export function StaffNote({
   useEffect(() => {
     let live = true;
     setFailed(false);
+    setSvg(null);
     renderStaffSvg(pitch, clef, font).then(
       (s) => live && setSvg(s),
       () => live && setFailed(true),
