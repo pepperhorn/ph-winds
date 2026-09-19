@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useWindBoard } from '@/state/useWindBoard';
+import { localStorageAdapter } from '@/state/storage';
 import { newCardDraft, createBoard } from '@/state/defaults';
 import { exportBoardJson, importBoardJson } from '@/state/io';
 import type { CardItem } from '@/state/types';
@@ -23,7 +24,11 @@ const writePref = (k: string, v: unknown) => { try { localStorage.setItem(k, JSO
 
 export default function WindCardsApp() {
   const { toast, node: toastNode } = useToast();
-  const board = useWindBoard();
+  const storage = useMemo(
+    () => localStorageAdapter('ph-winds-board', { onError: () => toast('Could not save — browser storage is full') }),
+    [toast],
+  );
+  const board = useWindBoard({ storage });
   const { state } = board;
   const { meta } = state;
   const [draft, setDraft] = useState<BuilderDraft | null>(null);
@@ -72,7 +77,9 @@ export default function WindCardsApp() {
 
   const onNew = () => {
     if (state.items.length && !window.confirm('Start a new board? This clears the current one.')) return;
-    board.replaceState(createBoard(meta.instrument)); setDraft(null);
+    const b = createBoard(meta.instrument);
+    board.replaceState({ ...b, meta: { ...b.meta, horn: meta.horn } });
+    setDraft(null);
   };
 
   const exportImage = (kind: 'png' | 'pdf') =>
