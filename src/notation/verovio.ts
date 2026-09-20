@@ -2,9 +2,16 @@
 //
 // Verovio ships as a ~7 MB WASM module, so it is dynamically imported and the
 // toolkit instance is cached behind a single promise. The bundled Bravura /
-// Petaluma zips (see fonts/verovio + verovio-fonts.generated.ts) are registered
-// via `fontAddCustom` the first time the toolkit initializes, so engraving uses
-// the repo-bundled fonts rather than whatever the Verovio build compiled in.
+// Petaluma zips (see fonts/verovio + verovio-font-{bravura,petaluma}.generated.ts)
+// are registered via `fontAddCustom` lazily, the first time each font is
+// actually requested, rather than both being fetched and registered
+// unconditionally at toolkit init — most sessions only ever render one font.
+//
+// Verified empirically (see PR description / commit message): calling
+// `tk.setOptions({ fontAddCustom: [...] })` a second time, after the toolkit
+// has already rendered at least once, is genuinely consumed by the next
+// `renderToSVG` call — no toolkit re-init is needed to pick up a font
+// registered after the fact.
 
 export type VerovioFont = "Bravura" | "Petaluma";
 
@@ -16,31 +23,66 @@ interface Toolkit {
   getPageCount(): number;
 }
 
+/** Per-font generated module shape (see scripts/embed-verovio-fonts.mjs). */
+const FONT_LOADERS: Record<VerovioFont, () => Promise<{ default?: never } & Record<string, string>>> = {
+  Bravura: () => import("./verovio-font-bravura.generated"),
+  Petaluma: () => import("./verovio-font-petaluma.generated"),
+};
+const FONT_CONST_NAME: Record<VerovioFont, string> = {
+  Bravura: "BRAVURA_ZIP_B64",
+  Petaluma: "PETALUMA_ZIP_B64",
+};
+
 let toolkitPromise: Promise<Toolkit> | null = null;
 // Set once the cached attempt has actually resolved, and never cleared: the
 // toolkit is a module-level singleton, so "has Verovio finished loading?" is
 // answerable synchronously from here. `isVerovioReady` below is the only
 // reader; it exists so a caller can tell a genuine download from a queue.
+//
+// This tracks *toolkit* readiness only, not *font* readiness — a toolkit can
+// be ready while a given font's zip is still being fetched/registered on its
+// first use. Font registration is a separate, per-font axis (`registeredFonts`
+// below); nothing today needs to ask "is font X ready" independently of
+// actually awaiting a render, so there is no analogous `isFontReady` export.
 let toolkitReady = false;
+
+// Fonts whose zip has already been registered via `fontAddCustom` on the
+// current toolkit instance. Switching to a previously-used font is then free.
+const registeredFonts = new Set<VerovioFont>();
+// In-flight registration attempts, keyed by font, so two callers requesting
+// the same not-yet-registered font concurrently share one dynamic import +
+// `setOptions` call rather than racing duplicate ones.
+const registeringFonts = new Map<VerovioFont, Promise<void>>();
+
+/** Register `font`'s bundled zip on `tk` via `fontAddCustom`, unless already done. */
+function ensureFontRegistered(tk: Toolkit, font: VerovioFont): Promise<void> {
+  if (registeredFonts.has(font)) return Promise.resolve();
+  let pending = registeringFonts.get(font);
+  if (!pending) {
+    pending = FONT_LOADERS[font]().then((mod) => {
+      tk.setOptions({ fontAddCustom: [mod[FONT_CONST_NAME[font]]] });
+      registeredFonts.add(font);
+    });
+    pending.catch(() => {
+      // Allow a later call to retry after a transient import failure.
+      registeringFonts.delete(font);
+    });
+    registeringFonts.set(font, pending);
+  }
+  return pending;
+}
 
 async function initToolkit(): Promise<Toolkit> {
   // `verovio/wasm` is the WASM module factory; `verovio/esm` the JS toolkit.
-  // The embedded font zips (~1 MB base64) are dynamically imported here too so
-  // they land in this lazy chunk rather than the main bundle.
-  const [{ default: createVerovioModule }, { VerovioToolkit }, { VEROVIO_FONT_ZIPS }] =
-    await Promise.all([
-      import("verovio/wasm"),
-      import("verovio/esm"),
-      import("./verovio-fonts.generated"),
-    ]);
+  // Font zips are no longer imported here — each is dynamically imported (and
+  // registered via `fontAddCustom`) the first time that specific font is
+  // actually requested, via `ensureFontRegistered` above.
+  const [{ default: createVerovioModule }, { VerovioToolkit }] = await Promise.all([
+    import("verovio/wasm"),
+    import("verovio/esm"),
+  ]);
   const mod = await createVerovioModule();
-  const tk = new VerovioToolkit(mod) as unknown as Toolkit;
-  // Register the bundled font zips (base64). Loading all keeps font switching
-  // instant afterwards — no re-init when the user toggles Bravura/Petaluma.
-  tk.setOptions({
-    fontAddCustom: Object.values(VEROVIO_FONT_ZIPS),
-  });
-  return tk;
+  return new VerovioToolkit(mod) as unknown as Toolkit;
 }
 
 /** Lazily load (and cache) the Verovio toolkit with the bundled fonts registered. */
@@ -89,12 +131,21 @@ export function isVerovioReady(): boolean {
  * gets. Its rejection is swallowed — a background warm-up has no caller to
  * catch it, and `getVerovioToolkit` already drops its cached promise on
  * failure, so a later render still retries from scratch.
+ *
+ * Also registers `font`'s zip (default Bravura, the board's default) so the
+ * font the board will actually render with first is warm too, not just the
+ * toolkit/WASM — the caller can pass the board's current default so the real
+ * first render skips that fetch as well. Sharing `ensureFontRegistered`'s
+ * in-flight map means this never duplicates a registration a real render
+ * already started (or vice versa).
  */
-export function prefetchVerovio(): Promise<void> {
-  return getVerovioToolkit().then(
-    () => undefined,
-    () => undefined,
-  );
+export function prefetchVerovio(font: VerovioFont = "Bravura"): Promise<void> {
+  return getVerovioToolkit()
+    .then((tk) => ensureFontRegistered(tk, font))
+    .then(
+      () => undefined,
+      () => undefined,
+    );
 }
 
 /** The slice of the Network Information API we consult. Absent in Safari and
@@ -137,11 +188,15 @@ export const shouldPrefetch = shouldPrefetchInBackground;
  * Idle-callback rather than an immediate call so the fetch and the WASM
  * instantiation never compete with first paint; Safari only shipped
  * `requestIdleCallback` recently, hence the timeout fallback.
+ *
+ * `font` is the board's current default music font (see `prefetchVerovio`);
+ * pass it along so the idle warm-up pre-registers the font the board will
+ * actually render with first, not just the toolkit.
  */
-export function prefetchVerovioWhenIdle(): () => void {
+export function prefetchVerovioWhenIdle(font: VerovioFont = "Bravura"): () => void {
   if (typeof window === "undefined") return () => {};
   if (!shouldPrefetchInBackground()) return () => {};
-  const warm = () => { void prefetchVerovio(); };
+  const warm = () => { void prefetchVerovio(font); };
   if (typeof window.requestIdleCallback === "function") {
     const id = window.requestIdleCallback(warm, { timeout: 3000 });
     return () => window.cancelIdleCallback?.(id);
@@ -155,6 +210,16 @@ export interface RenderMeiOptions {
   /** Verovio `scale` (percent). Larger = bigger engraving. */
   scale?: number;
 }
+
+// The render-options object below is constant except for `font`/`scale`, and
+// nearly every call in a session repeats the same pair (one clef/scale, and
+// most boards never touch the font toggle) — so re-`setOptions`ing it every
+// single render is pure overhead. Track what's currently applied and skip the
+// call when nothing changed. Verovio's `setOptions` merges rather than
+// replaces (the existing `fontAddCustom`-only calls from `ensureFontRegistered`
+// already relied on that), so skipping this call never drops a previously
+// applied option.
+let appliedRenderOptions: { font: VerovioFont; scale: number } | null = null;
 
 /** Render an MEI document to a single-system SVG string. */
 export async function renderMeiToSvg(
@@ -178,21 +243,26 @@ export async function renderMeiToSvg(
   } catch {
     tk = await getVerovioToolkit();
   }
-  tk.setOptions({
-    font,
-    scale,
-    adjustPageWidth: true,
-    adjustPageHeight: true,
-    breaks: "none",
-    header: "none",
-    footer: "none",
-    pageMarginTop: 2,
-    pageMarginBottom: 8,
-    pageMarginLeft: 4,
-    pageMarginRight: 4,
-    svgViewBox: true,
-    svgRemoveXlink: true,
-  });
+  // Register this font's zip on first use of it (no-op if already done).
+  await ensureFontRegistered(tk, font);
+  if (appliedRenderOptions?.font !== font || appliedRenderOptions?.scale !== scale) {
+    tk.setOptions({
+      font,
+      scale,
+      adjustPageWidth: true,
+      adjustPageHeight: true,
+      breaks: "none",
+      header: "none",
+      footer: "none",
+      pageMarginTop: 2,
+      pageMarginBottom: 8,
+      pageMarginLeft: 4,
+      pageMarginRight: 4,
+      svgViewBox: true,
+      svgRemoveXlink: true,
+    });
+    appliedRenderOptions = { font, scale };
+  }
   if (!tk.loadData(mei)) {
     throw new Error("Verovio failed to load notation data");
   }
@@ -217,6 +287,10 @@ import { buildMei } from "./mei";
 /** Verovio `scale` (percent) tuned for a one-note staff at ~150px wide. */
 const STAFF_SCALE = 40;
 
+/** Board-facing `MusicFont` ('bravura' | 'petaluma') -> Verovio's font name. */
+export const musicFontToVerovioFont = (font: MusicFont): VerovioFont =>
+  font === "petaluma" ? "Petaluma" : "Bravura";
+
 const svgCache = new Map<string, Promise<string>>();
 let queue: Promise<unknown> = Promise.resolve();
 
@@ -227,7 +301,7 @@ export function renderStaffSvg(p: Pitch, clef: "G" | "F", font: MusicFont): Prom
   if (!hit) {
     hit = queue.then(() =>
       renderMeiToSvg(buildMei(p, clef), {
-        font: font === "petaluma" ? "Petaluma" : "Bravura",
+        font: musicFontToVerovioFont(font),
         scale: STAFF_SCALE,
       }),
     );

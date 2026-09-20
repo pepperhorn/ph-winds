@@ -8,7 +8,7 @@ import { getInstrument, playableMidis, rangeBands, semitones, spellWritten as sp
 import { prefersFlats, toMidi, type Pitch } from '@/music/pitch';
 import { instrumentVoice, PIANO_VOICE, soundingMidi } from '@/audio/voices';
 import { playNote, releaseVoicesExcept } from '@/audio/playback';
-import { prefetchVerovioWhenIdle } from '@/notation/verovio';
+import { musicFontToVerovioFont, prefetchVerovioWhenIdle } from '@/notation/verovio';
 import { exportBoardImage, downloadText } from '@/export/image';
 import { ErrorBoundary } from './ErrorBoundary';
 import { AppBar } from '@/components/AppBar';
@@ -42,7 +42,9 @@ function WindCardsApp() {
   useEffect(() => writePref('ph-winds-piano-open', pianoOpen), [pianoOpen]);
   useEffect(() => writePref('ph-winds-sound-on-click', soundOnClick), [soundOnClick]);
   useEffect(() => writePref('ph-winds-sound-voice', soundVoice), [soundVoice]);
-  useEffect(() => prefetchVerovioWhenIdle(), []);
+  // Pass the board's current default font so the idle warm-up pre-registers
+  // the font the board will actually render with first, not just the toolkit.
+  useEffect(() => prefetchVerovioWhenIdle(musicFontToVerovioFont(meta.musicFont)), [meta.musicFont]);
   useEffect(() => { releaseVoicesExcept([instrumentVoice(meta.instrument, meta.horn), PIANO_VOICE]); }, [meta.instrument, meta.horn]);
 
   const semis = semitones(meta.instrument, meta.horn);

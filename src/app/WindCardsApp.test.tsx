@@ -4,7 +4,11 @@ import userEvent from '@testing-library/user-event';
 import WindCardsApp from './WindCardsApp';
 
 vi.mock('@/notation/StaffNote', () => ({ StaffNote: () => <div data-testid="staff" /> }));
-vi.mock('@/notation/verovio', () => ({ prefetchVerovioWhenIdle: () => () => {}, pendingRenders: () => Promise.resolve() }));
+vi.mock('@/notation/verovio', () => ({
+  prefetchVerovioWhenIdle: () => () => {},
+  pendingRenders: () => Promise.resolve(),
+  musicFontToVerovioFont: (font: string) => (font === 'petaluma' ? 'Petaluma' : 'Bravura'),
+}));
 vi.mock('@/audio/playback', () => ({ playNote: vi.fn(() => Promise.resolve()), releaseVoicesExcept: vi.fn(), isVoiceLoaded: () => true }));
 
 describe('WindCardsApp', () => {
