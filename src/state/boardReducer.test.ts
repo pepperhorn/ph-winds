@@ -19,9 +19,54 @@ describe('boardReducer', () => {
     const s = boardReducer(withCards('a', 'b'), { type: 'duplicate', id: 'a', newId: 'a2' });
     expect(s.items.map((i) => i.id)).toEqual(['a', 'a2', 'b']);
   });
-  it('reorders to the target slot', () => {
-    const s = boardReducer(withCards('a', 'b', 'c'), { type: 'reorder', fromId: 'c', toId: 'a' });
-    expect(s.items.map((i) => i.id)).toEqual(['c', 'a', 'b']);
+  describe('reorder (insertion-index semantics)', () => {
+    const ids = (s: ReturnType<typeof withCards>) => s.items.map((i) => i.id);
+
+    it('drags forward: the card lands in the gap, not after the shifted neighbour', () => {
+      // [a,b,c,d], drop a in the gap before c (index 2) -> [b,a,c,d].
+      const s = boardReducer(withCards('a', 'b', 'c', 'd'), { type: 'reorder', fromId: 'a', toIndex: 2 });
+      expect(ids(s)).toEqual(['b', 'a', 'c', 'd']);
+    });
+    it('drags forward past a card: index 3 lands after c', () => {
+      const s = boardReducer(withCards('a', 'b', 'c', 'd'), { type: 'reorder', fromId: 'a', toIndex: 3 });
+      expect(ids(s)).toEqual(['b', 'c', 'a', 'd']);
+    });
+    it('drags backward: index 1 lands after a, before b', () => {
+      const s = boardReducer(withCards('a', 'b', 'c', 'd'), { type: 'reorder', fromId: 'd', toIndex: 1 });
+      expect(ids(s)).toEqual(['a', 'd', 'b', 'c']);
+    });
+    it('drags to index 0 (the head of the board)', () => {
+      const s = boardReducer(withCards('a', 'b', 'c'), { type: 'reorder', fromId: 'c', toIndex: 0 });
+      expect(ids(s)).toEqual(['c', 'a', 'b']);
+    });
+    it('drags to items.length (the tail of the board)', () => {
+      const s = boardReducer(withCards('a', 'b', 'c'), { type: 'reorder', fromId: 'a', toIndex: 3 });
+      expect(ids(s)).toEqual(['b', 'c', 'a']);
+    });
+    it('the same insertion point is symmetric in both drag directions', () => {
+      // Dropping into the gap between b and c (index 2) puts the card there
+      // whichever side it came from.
+      const fwd = boardReducer(withCards('a', 'b', 'c', 'd'), { type: 'reorder', fromId: 'a', toIndex: 2 });
+      expect(ids(fwd)).toEqual(['b', 'a', 'c', 'd']);
+      const back = boardReducer(withCards('a', 'b', 'c', 'd'), { type: 'reorder', fromId: 'd', toIndex: 2 });
+      expect(ids(back)).toEqual(['a', 'b', 'd', 'c']);
+    });
+    it('is a no-op (same state reference) when the index is the card’s own slot', () => {
+      const s0 = withCards('a', 'b', 'c');
+      expect(boardReducer(s0, { type: 'reorder', fromId: 'b', toIndex: 1 })).toBe(s0);
+      expect(boardReducer(s0, { type: 'reorder', fromId: 'b', toIndex: 2 })).toBe(s0);
+    });
+    it('is a no-op for an unknown fromId', () => {
+      const s0 = withCards('a', 'b', 'c');
+      expect(boardReducer(s0, { type: 'reorder', fromId: 'nope', toIndex: 0 })).toBe(s0);
+    });
+    it('clamps an out-of-range toIndex instead of throwing', () => {
+      const s0 = withCards('a', 'b', 'c');
+      expect(ids(boardReducer(s0, { type: 'reorder', fromId: 'a', toIndex: 99 }))).toEqual(['b', 'c', 'a']);
+      expect(ids(boardReducer(s0, { type: 'reorder', fromId: 'c', toIndex: -4 }))).toEqual(['c', 'a', 'b']);
+      // Clamping to the card's own slot still collapses to a no-op.
+      expect(boardReducer(s0, { type: 'reorder', fromId: 'a', toIndex: -1 })).toBe(s0);
+    });
   });
   it('setInstrument keeps cards, resets style variants, and does not touch meta.horn for a horn-less instrument', () => {
     let s = withCards('a');

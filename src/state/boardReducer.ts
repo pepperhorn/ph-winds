@@ -10,7 +10,7 @@ export type BoardAction =
   | { type: 'update'; id: string; patch: Partial<CardDraft> }
   | { type: 'remove'; id: string }
   | { type: 'duplicate'; id: string; newId: string }
-  | { type: 'reorder'; fromId: string; toId: string }
+  | { type: 'reorder'; fromId: string; toIndex: number }
   | { type: 'clear' }
   | { type: 'replace'; state: BoardState };
 
@@ -43,12 +43,21 @@ export function boardReducer(s: BoardState, a: BoardAction): BoardState {
       return { ...s, items };
     }
     case 'reorder': {
+      // `toIndex` is an INSERTION index in 0..items.length inclusive — the gap
+      // the card lands in, not the index of a neighbouring card. That makes a
+      // drop position direction-independent, which the drop indicator relies
+      // on: the line the user sees is exactly the gap the card ends up in.
       const from = s.items.findIndex((c) => c.id === a.fromId);
-      const to = s.items.findIndex((c) => c.id === a.toId);
-      if (from < 0 || to < 0 || from === to) return s;
+      if (from < 0) return s;
+      const toIndex = Math.max(0, Math.min(s.items.length, a.toIndex));
+      // Inserting immediately before or after itself leaves the order alone;
+      // return the same state object so React skips the re-render.
+      if (toIndex === from || toIndex === from + 1) return s;
       const items = [...s.items];
       const [moved] = items.splice(from, 1);
-      items.splice(to, 0, moved);
+      // The removal above shifts everything after `from` down by one, so a
+      // forward insertion point has to come down with it.
+      items.splice(toIndex > from ? toIndex - 1 : toIndex, 0, moved);
       return { ...s, items };
     }
     case 'clear': return { ...s, items: [] };
