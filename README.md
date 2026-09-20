@@ -26,11 +26,11 @@ pnpm install
 pnpm dev        # astro dev --host 0.0.0.0, so it's reachable from other devices on the network
 ```
 
-Until `@pepperhorn/fingering-components` 0.2.0 is published to npm, this
-package links `../fingering-components` (see `package.json`,
-`"@pepperhorn/fingering-components": "link:../fingering-components"`); check
-out that repo as a sibling directory of `ph-winds` before running `pnpm
-install`.
+Fingering data and diagrams come from
+[`@pepperhorn/fingering-components`](https://www.npmjs.com/package/@pepperhorn/fingering-components)
+on npm, so `pnpm install` is all you need. To work against a local checkout of
+that library instead, point the dependency at it with
+`pnpm add @pepperhorn/fingering-components@link:../fingering-components`.
 
 ### Checks
 
