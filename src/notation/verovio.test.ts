@@ -18,8 +18,8 @@ const { fakeToolkit, createVerovioModule, VerovioToolkitCtor } = vi.hoisted(() =
 
 vi.mock('verovio/wasm', () => ({ default: createVerovioModule }));
 vi.mock('verovio/esm', () => ({ VerovioToolkit: VerovioToolkitCtor }));
-vi.mock('./verovio-font-bravura.generated', () => ({ BRAVURA_ZIP_B64: 'bravura-b64' }));
-vi.mock('./verovio-font-petaluma.generated', () => ({ PETALUMA_ZIP_B64: 'petaluma-b64' }));
+vi.mock('./verovio-font-bravura.generated', () => ({ ZIP_B64: 'bravura-b64' }));
+vi.mock('./verovio-font-petaluma.generated', () => ({ ZIP_B64: 'petaluma-b64' }));
 
 import { getVerovioToolkit, isVerovioReady, onVerovioReady, renderMeiToSvg } from './verovio';
 
