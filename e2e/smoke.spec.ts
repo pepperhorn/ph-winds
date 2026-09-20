@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('build a card, persist it, render Petaluma, play without errors', async ({ page }) => {
+test('build a card, persist it, render Handwritten font, play without errors', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   // stub audio: no network soundfonts in CI
@@ -20,7 +20,7 @@ test('build a card, persist it, render Petaluma, play without errors', async ({ 
   await page.reload();
   await expect(page.locator('#wc-board-export .wc-card')).toHaveCount(1);
 
-  await page.getByRole('radio', { name: 'Petaluma' }).click();
+  await page.getByRole('radio', { name: 'Handwritten' }).click();
   // Verovio's SVG output nests an inner <svg class="definition-scale"> inside
   // the outer page <svg>, so `.wc-staff svg` matches two elements; .first()
   // disambiguates without weakening the assertion (both resolve together).
@@ -28,6 +28,8 @@ test('build a card, persist it, render Petaluma, play without errors', async ({ 
 
   await page.locator('#wc-board-export .wc-card').hover();
   await page.getByRole('button', { name: 'Play voice' }).first().click();
-  await expect(page.getByRole('status')).toHaveText(/Could not load that sound/);   // network blocked → graceful toast
+  // Scoped to `.wc-toast`: `getByRole('status')` alone is ambiguous with the
+  // per-staff notation-loading region (`role="status"` on `.wc-staff-loading`).
+  await expect(page.locator('.wc-toast')).toHaveText(/Could not load that sound/);   // network blocked → graceful toast
   expect(errors).toEqual([]);
 });

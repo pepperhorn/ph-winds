@@ -26,7 +26,7 @@ import { type Pitch, parsePitch, toMidi, fromMidi, prefersFlats } from './pitch'
 
 export type InstrumentId = 'saxophone' | 'clarinet' | 'flute' | 'recorder' | 'tin-whistle' | 'trumpet' | 'trombone' | 'nuvo-dood' | 'nuvo-toot';
 export interface HornOption { id: string; name: string }
-export interface InstrumentInfo { id: InstrumentId; name: string; horns: HornOption[]; defaultHorn?: string; clef: 'G' | 'F'; layout: Layout }
+export interface InstrumentInfo { id: InstrumentId; name: string; shortName: string; horns: HornOption[]; defaultHorn?: string; clef: 'G' | 'F'; layout: Layout }
 export type Band = { low: number; high: number };
 export interface RangeBands { beginner: Band; intermediate: Band; pro: Band }
 
@@ -46,9 +46,26 @@ const CATALOGUE: { layout: Layout; clef: 'G' | 'F'; sheets: Sheets }[] = [
   { layout: nuvoToot, clef: 'G', sheets: () => fToot.fingerings },
 ];
 
+/** Short display name per instrument, for compact UI like the "not available
+ * on …" line and the icon-picker caption — the full `name` (which may carry
+ * parentheticals such as "Recorder (baroque fingering)") is used as each
+ * icon-picker button's accessible name instead. */
+const SHORT_NAMES: Record<InstrumentId, string> = {
+  saxophone: 'Saxophone',
+  clarinet: 'Clarinet',
+  flute: 'Flute',
+  recorder: 'Recorder',
+  'tin-whistle': 'Tin whistle',
+  trumpet: 'Trumpet',
+  trombone: 'Trombone',
+  'nuvo-dood': 'Nuvo Dood',
+  'nuvo-toot': 'Nuvo TooT',
+};
+
 const INFO: InstrumentInfo[] = CATALOGUE.map(({ layout, clef }) => ({
   id: layout.id as InstrumentId,
   name: layout.name,
+  shortName: SHORT_NAMES[layout.id as InstrumentId] ?? layout.name,
   horns: Object.entries(layout.horns ?? {}).map(([id, h]) => ({ id, name: h.name })),
   defaultHorn: layout.horn,
   clef,
@@ -81,6 +98,14 @@ export function fingeringsFor(id: string, horn: string | undefined, writtenMidi:
   if (!primary) return [];
   const { alternates = [], ...main } = primary;
   return [main, ...alternates.map((a, i) => ({ ...a, note: main.note, octave: main.octave, note_text: `Alt ${i + 1}` }))];
+}
+
+/** Whether `id`/`horn` has any fingering for a given written pitch — shared
+ * predicate for the unavailable-card check (used by both `WindCard` and
+ * `Board`, which need to agree so the export filter doesn't leave a
+ * spurious gap where the card itself is hidden but its wrapper isn't). */
+export function hasFingering(id: string, horn: string | undefined, writtenMidi: number): boolean {
+  return fingeringsFor(id, horn, writtenMidi).length > 0;
 }
 
 export const playableMidis = (id: string, horn?: string) => new Set(fingeringSheet(id, horn).map(fMidi));

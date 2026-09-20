@@ -1,11 +1,11 @@
 import type { BoardMeta, CardItem, CardText, DiagramStyle, TextKey } from './types';
-import { type Pitch, formatPitch, transposePitch } from '@/music/pitch';
+import { type Pitch, formatPitchPair, transposePitch } from '@/music/pitch';
 import { semitones } from '@/music/instruments';
 
-export const autoHeading = (p: Pitch) => formatPitch(p);
+export const autoHeading = (p: Pitch) => formatPitchPair(p);
 
 export const autoSubtitle = (p: Pitch, semis: number) =>
-  semis === 0 ? '' : `sounds ${formatPitch(transposePitch(p, semis))}`;
+  semis === 0 ? '' : `Concert Pitch: ${formatPitchPair(transposePitch(p, semis))}`;
 
 const KEYS: TextKey[] = ['heading', 'subtitle', 'footer'];
 

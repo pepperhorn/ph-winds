@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { BoardMeta, BoardState, CardItem, TextField } from '@/state/types';
 import { WindCard } from './WindCard';
+import { hasFingering } from '@/music/instruments';
+import { toMidi } from '@/music/pitch';
 
 const ALIGN = { left: 'text-left', center: 'text-center', right: 'text-right' } as const;
 const TITLE = { S: 'text-xl', M: 'text-2xl', L: 'text-3xl' } as const;
@@ -54,6 +56,15 @@ export function Board({ state, onReorder, onEdit, onDuplicate, onRemove, onMeta,
     ? 'flex flex-wrap [justify-content:safe_center] items-start'
     : `grid items-start [justify-items:safe_center] ${['', 'grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4'][meta.columns]}`;
 
+  // Memoised per-card "does this pitch have a fingering on the current
+  // instrument/horn" predicate: only recompute when the cards or the
+  // instrument/horn actually change, not on every Board re-render (drag
+  // state, hover, etc).
+  const unavailableById = useMemo(
+    () => new Map(items.map((c) => [c.id, !hasFingering(meta.instrument, meta.horn, toMidi(c.pitch))])),
+    [items, meta.instrument, meta.horn],
+  );
+
   return (
     <section id="wc-board-export" className="wc-board rounded-3xl border border-hairline bg-surface p-8 shadow-glow">
       <ChromeInput f={meta.title} cls="wc-board-title" sizes={TITLE} weight="font-semibold" placeholder="Board title" onChange={(p) => onMeta({ title: { ...meta.title, ...p } })} />
@@ -64,8 +75,9 @@ export function Board({ state, onReorder, onEdit, onDuplicate, onRemove, onMeta,
           <div className={`wc-board-grid mt-6 gap-5 overflow-x-auto ${grid}`}>
             {items.map((c) => {
               const loadingPlay = loading?.key === c.id ? loading.which : undefined;
+              const unavailable = unavailableById.get(c.id) ?? true;
               return (
-              <div key={c.id} draggable={armed === c.id}
+              <div key={c.id} draggable={armed === c.id} data-export-hide={unavailable || undefined}
                 onDragStart={(e) => { setDrag(c.id); e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; }}
                 onDragEnd={() => { setDrag(null); setArmed(null); }}
                 onDragOver={(e) => { if (drag) e.preventDefault(); }}

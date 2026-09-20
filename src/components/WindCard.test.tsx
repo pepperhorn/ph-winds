@@ -13,7 +13,7 @@ describe('WindCard', () => {
   it('shows heading, subtitle, diagram and staff by default', () => {
     const { container } = render(<WindCard card={newCardDraft(parsePitch('C5'))} meta={meta} />);
     expect(screen.getByText('C5')).toBeInTheDocument();
-    expect(screen.getByText('sounds E♭4')).toBeInTheDocument();
+    expect(screen.getByText('Concert Pitch: E♭4 / D♯4')).toBeInTheDocument();
     expect(container.querySelector('.wc-fingering svg')).not.toBeNull();
     expect(screen.getByTestId('staff')).toBeInTheDocument();
   });
@@ -34,9 +34,39 @@ describe('WindCard', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Play piano' }));
     expect(onPlay.mock.calls).toEqual([['voice'], ['piano']]);
   });
-  it('shows a placeholder when the note has no fingering', () => {
-    render(<WindCard card={newCardDraft(parsePitch('C2'))} meta={meta} />);
-    expect(screen.getByText('No fingering')).toBeInTheDocument();
+  it('renders a greyed unavailable card when the note has no fingering, with no diagram/staff/play buttons', () => {
+    const onPlay = vi.fn();
+    const { container } = render(<WindCard card={newCardDraft(parsePitch('C2'))} meta={meta} onPlay={onPlay} showPlay="always" />);
+    expect(container.querySelector('.wc-card--unavailable')).not.toBeNull();
+    expect(screen.getByText('C2')).toBeInTheDocument();
+    expect(screen.getByText('not available on E♭ alto Saxophone')).toBeInTheDocument();
+    expect(container.querySelector('.wc-fingering')).toBeNull();
+    expect(screen.queryByTestId('staff')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Play voice' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Play piano' })).toBeNull();
+    expect(container.querySelector('.wc-card')).toHaveAttribute('data-export-hide');
+  });
+  it('shows both enharmonic spellings for an unavailable accidental pitch', () => {
+    const { container } = render(<WindCard card={newCardDraft(parsePitch('C#1'))} meta={meta} />);
+    expect(container.querySelector('.wc-card--unavailable')).not.toBeNull();
+    expect(screen.getByText('D♭1 / C♯1')).toBeInTheDocument();
+    expect(screen.getByText('not available on E♭ alto Saxophone')).toBeInTheDocument();
+  });
+  it('shows the user\'s own heading override instead of the pitch pair when set, keeping the "not available" line underneath', () => {
+    const draft = { ...newCardDraft(parsePitch('C2')), text: { heading: { text: 'My low C' } } };
+    render(<WindCard card={draft} meta={meta} />);
+    expect(screen.getByText('My low C')).toBeInTheDocument();
+    expect(screen.queryByText('C2')).toBeNull();
+    expect(screen.getByText('not available on E♭ alto Saxophone')).toBeInTheDocument();
+  });
+  it('uses the short instrument name (no parenthetical) for a horn-less instrument', () => {
+    const recorderMeta = createBoard('recorder').meta;
+    render(<WindCard card={newCardDraft(parsePitch('C2'))} meta={recorderMeta} />);
+    expect(screen.getByText('not available on Recorder')).toBeInTheDocument();
+  });
+  it('an available card carries no data-export-hide attribute', () => {
+    const { container } = render(<WindCard card={newCardDraft(parsePitch('C5'))} meta={meta} />);
+    expect(container.querySelector('.wc-card')).not.toHaveAttribute('data-export-hide');
   });
   it('marks the play-voice button as busy while its voice loads', () => {
     render(<WindCard card={newCardDraft(parsePitch('C5'))} meta={meta} onPlay={vi.fn()} showPlay="always" loadingPlay="voice" />);
