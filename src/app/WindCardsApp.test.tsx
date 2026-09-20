@@ -25,4 +25,18 @@ describe('WindCardsApp', () => {
     await userEvent.click(screen.getByRole('button', { name: 'E♭4' }));
     expect(within(document.querySelector('.wc-builder-preview')!).getByText('C5')).toBeInTheDocument();
   });
+  it('switching instrument remaps the board rather than clearing it', async () => {
+    render(<WindCardsApp />);   // default: alto sax
+    await userEvent.click(screen.getByRole('button', { name: 'C5' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add to board' }));
+    const board = document.getElementById('wc-board-export')!;
+    expect(within(board).getByText('C5')).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText('Instrument'), 'flute');
+    // alto sax (-9) C5 sounds Eb4 (midi 63); flute (0) written at that midi
+    // is spelled D#4 by the flute fingering chart (its own spelling wins).
+    expect(board.querySelectorAll('.wc-card')).toHaveLength(1);
+    expect(within(board).queryByText('C5')).toBeNull();
+    expect(within(board).getByText('D♯4')).toBeInTheDocument();
+  });
 });

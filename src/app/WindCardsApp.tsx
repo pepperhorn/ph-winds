@@ -4,7 +4,7 @@ import { localStorageAdapter } from '@/state/storage';
 import { newCardDraft, createBoard } from '@/state/defaults';
 import { exportBoardJson, importBoardJson } from '@/state/io';
 import type { CardItem } from '@/state/types';
-import { playableMidis, rangeBands, semitones, spellWritten as spellWrittenPitch } from '@/music/instruments';
+import { getInstrument, playableMidis, rangeBands, semitones, spellWritten as spellWrittenPitch } from '@/music/instruments';
 import { prefersFlats, toMidi, type Pitch } from '@/music/pitch';
 import { instrumentVoice, PIANO_VOICE, soundingMidi } from '@/audio/voices';
 import { playNote, releaseVoicesExcept } from '@/audio/playback';
@@ -80,6 +80,18 @@ function WindCardsApp() {
     if (r.ok) { board.replaceState(r.state); setDraft(null); } else toast(r.error);
   };
 
+  // Mirrors boardReducer's `setInstrument` remap so a card mid-edit in the
+  // builder doesn't drift out of sync with its (already remapped) board item.
+  const onInstrument = (id: string, horn?: string) => {
+    const resolvedHorn = horn ?? getInstrument(id).defaultHorn;
+    const oldSemis = semis;
+    const newSemis = semitones(id, resolvedHorn);
+    board.setInstrument(id, horn);
+    setDraft((d) => (d
+      ? { ...d, pitch: spellWrittenPitch(id, resolvedHorn, toMidi(d.pitch) + oldSemis - newSemis), fingeringIndex: 0 }
+      : d));
+  };
+
   const onNew = () => {
     if (state.items.length && !window.confirm('Start a new board? This clears the current one.')) return;
     const b = createBoard(meta.instrument);
@@ -98,9 +110,9 @@ function WindCardsApp() {
       <main className="wc-main mx-auto max-w-[1200px] space-y-6 px-6">
         <Builder draft={draft} meta={meta} onChange={setDraft} onCommit={commit} onCancelEdit={() => setDraft(null)}
           onPlay={(w) => draft && play(draft.pitch, w, 'draft')}
-          loadingPlay={loading?.key === 'draft' ? loading.which : undefined} />
-        <BoardSettings meta={meta} hasCards={state.items.length > 0} onMeta={board.setMeta}
-          onInstrument={(id, horn) => { board.setInstrument(id, horn); setDraft(null); }} />
+          loadingPlay={loading?.key === 'draft' ? loading.which : undefined}
+          onMeta={board.setMeta} onInstrument={onInstrument} />
+        <BoardSettings meta={meta} onMeta={board.setMeta} />
         <Board state={state} selectedId={draft?.editingId} onReorder={board.reorder} onEdit={edit}
           onDuplicate={board.duplicateCard} onRemove={board.removeCard} onMeta={board.setMeta}
           onPlay={(c: CardItem, w) => play(c.pitch, w, c.id)} loading={loading} />
