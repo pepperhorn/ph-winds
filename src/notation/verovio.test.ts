@@ -21,13 +21,36 @@ vi.mock('verovio/esm', () => ({ VerovioToolkit: VerovioToolkitCtor }));
 vi.mock('./verovio-font-bravura.generated', () => ({ BRAVURA_ZIP_B64: 'bravura-b64' }));
 vi.mock('./verovio-font-petaluma.generated', () => ({ PETALUMA_ZIP_B64: 'petaluma-b64' }));
 
-import { renderMeiToSvg } from './verovio';
+import { getVerovioToolkit, isVerovioReady, onVerovioReady, renderMeiToSvg } from './verovio';
 
 function fontAddCustomCalls() {
   return fakeToolkit.setOptions.mock.calls
     .map(([opts]) => opts as Record<string, unknown>)
     .filter((opts) => 'fontAddCustom' in opts);
 }
+
+describe('onVerovioReady', () => {
+  it('fires once when the toolkit resolves, for a caller that subscribed while it was still loading', async () => {
+    expect(isVerovioReady()).toBe(false);
+    const cb = vi.fn();
+    onVerovioReady(cb);
+    expect(cb).not.toHaveBeenCalled();
+
+    await getVerovioToolkit();
+
+    expect(isVerovioReady()).toBe(true);
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires asynchronously (not synchronously) even when already ready', async () => {
+    expect(isVerovioReady()).toBe(true); // ready from the previous test
+    const cb = vi.fn();
+    onVerovioReady(cb);
+    expect(cb).not.toHaveBeenCalled();
+    await Promise.resolve(); // flush the microtask
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('verovio lazy per-font registration', () => {
   it('registers only the font actually requested, and only once per font', async () => {

@@ -85,12 +85,20 @@ async function initToolkit(): Promise<Toolkit> {
   return new VerovioToolkit(mod) as unknown as Toolkit;
 }
 
+// Callbacks waiting on the toolkit's *first* ready transition (see
+// `onVerovioReady` below). Cleared once fired — the toolkit only ever
+// transitions false -> true once in a page's lifetime.
+const readyListeners = new Set<() => void>();
+
 /** Lazily load (and cache) the Verovio toolkit with the bundled fonts registered. */
 export function getVerovioToolkit(): Promise<Toolkit> {
   if (!toolkitPromise) {
     toolkitPromise = initToolkit().then(
       (tk) => {
         toolkitReady = true;
+        const listeners = [...readyListeners];
+        readyListeners.clear();
+        for (const cb of listeners) cb();
         return tk;
       },
       (err) => {
@@ -111,9 +119,43 @@ export function getVerovioToolkit(): Promise<Toolkit> {
  * board of twenty staff cards queues twenty ~100 ms engravings: the last cards
  * wait seconds with nothing whatsoever left to download. Anything that wants to
  * say "still downloading" has to ask this rather than time the wait.
+ *
+ * This is *toolkit* readiness only, not *font* readiness (see
+ * `registeredFonts` above) — a caller that also cares whether a specific
+ * font is registered has to await a render; nothing today needs to ask that
+ * independently, so there is no analogous `isFontReady`.
  */
 export function isVerovioReady(): boolean {
   return toolkitReady;
+}
+
+/**
+ * Subscribe to the toolkit's first ready transition, for a component that
+ * mounted before it resolved and wants to react without polling
+ * `isVerovioReady()`. Fires `cb` exactly once — either when the in-flight
+ * toolkit init resolves, or, if it's already ready, on a microtask right
+ * after subscribing (so callers can always treat this as "subscribe, then
+ * get called back asynchronously" rather than special-casing an
+ * already-ready synchronous call during render). Returns an unsubscribe
+ * function.
+ *
+ * Shaped to double as a React `useSyncExternalStore` `subscribe` function
+ * paired with `isVerovioReady` as `getSnapshot`.
+ */
+export function onVerovioReady(cb: () => void): () => void {
+  if (toolkitReady) {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) cb();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }
+  readyListeners.add(cb);
+  return () => {
+    readyListeners.delete(cb);
+  };
 }
 
 /**
