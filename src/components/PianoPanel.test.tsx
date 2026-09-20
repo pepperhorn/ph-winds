@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
-import { PianoDrawer } from './PianoDrawer';
+import { PianoPanel } from './PianoPanel';
 
-function renderDrawer(open: boolean) {
+function renderPanel(open: boolean) {
   return render(
-    <PianoDrawer
+    <PianoPanel
       open={open}
       onToggle={vi.fn()}
       soundOnClick={false}
@@ -13,26 +13,26 @@ function renderDrawer(open: boolean) {
       onSoundVoice={vi.fn()}
     >
       <div>keyboard placeholder</div>
-    </PianoDrawer>,
+    </PianoPanel>,
   );
 }
 
-describe('PianoDrawer', () => {
+describe('PianoPanel', () => {
   it('gives both sound-voice options a semantic wc- class name', () => {
-    const { container } = renderDrawer(true);
+    const { container } = renderPanel(true);
     const instrumentOption = container.querySelector('option[value="voice"]');
     const pianoOption = container.querySelector('option[value="piano"]');
     expect(instrumentOption).toHaveClass('wc-sound-voice-option');
     expect(pianoOption).toHaveClass('wc-sound-voice-option');
   });
 
-  it('makes the panel inert when closed and interactive when open', () => {
-    const { container: closed } = renderDrawer(false);
-    const closedPanel = closed.querySelector('.wc-piano-panel');
-    expect(closedPanel).toHaveAttribute('inert');
+  it('makes the panel content inert when closed and interactive when open', () => {
+    const { container: closed } = renderPanel(false);
+    const closedBody = closed.querySelector('.wc-piano-body');
+    expect(closedBody).toHaveAttribute('inert');
 
-    const { container: opened } = renderDrawer(true);
-    const openedPanel = opened.querySelector('.wc-piano-panel');
-    expect(openedPanel).not.toHaveAttribute('inert');
+    const { container: opened } = renderPanel(true);
+    const openedBody = opened.querySelector('.wc-piano-body');
+    expect(openedBody).not.toHaveAttribute('inert');
   });
 });

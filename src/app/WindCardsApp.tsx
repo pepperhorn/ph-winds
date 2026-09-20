@@ -16,7 +16,7 @@ import { AboutDialog } from '@/components/AboutDialog';
 import { Board } from '@/components/Board';
 import { BoardSettings } from '@/components/BoardSettings';
 import { Builder, type BuilderDraft } from '@/components/Builder';
-import { PianoDrawer } from '@/components/PianoDrawer';
+import { PianoPanel } from '@/components/PianoPanel';
 import { PianoKeyboard } from '@/components/PianoKeyboard';
 import { useToast } from '@/components/Toast';
 
@@ -102,8 +102,18 @@ function WindCardsApp() {
   const exportImage = (kind: 'png' | 'pdf') =>
     exportBoardImage(document.getElementById('wc-board-export')!, kind, meta.title.text || 'ph-winds-board').catch(() => toast('Export failed'));
 
+  const pianoPanel = (
+    <PianoPanel open={pianoOpen} onToggle={() => setPianoOpen(!pianoOpen)}
+      soundOnClick={soundOnClick} onSoundOnClick={setSoundOnClick} soundVoice={soundVoice} onSoundVoice={setSoundVoice}>
+      <PianoKeyboard bands={bands} offset={meta.pitchMode === 'concert' ? semis : 0} playable={playable}
+        selected={draft ? toMidi(draft.pitch) : undefined} preferFlats={meta.pitchMode === 'concert' && prefersFlats(semis)}
+        mode={meta.pitchMode} spellWritten={(m) => spellWrittenPitch(meta.instrument, meta.horn, m)}
+        onSelect={selectNote} />
+    </PianoPanel>
+  );
+
   return (
-    <div className={`wc-app min-h-screen ${pianoOpen ? 'pb-72' : 'pb-16'}`}>
+    <div className="wc-app min-h-screen">
       <AppBar onNew={onNew} onImport={onImport} onAbout={() => setAbout(true)}
         onExportJson={() => downloadText(exportBoardJson(state), `${meta.title.text || 'ph-winds-board'}.json`, 'application/json')}
         onExportPng={() => exportImage('png')} onExportPdf={() => exportImage('pdf')} />
@@ -111,19 +121,12 @@ function WindCardsApp() {
         <Builder draft={draft} meta={meta} onChange={setDraft} onCommit={commit} onCancelEdit={() => setDraft(null)}
           onPlay={(w) => draft && play(draft.pitch, w, 'draft')}
           loadingPlay={loading?.key === 'draft' ? loading.which : undefined}
-          onMeta={board.setMeta} onInstrument={onInstrument} />
+          onMeta={board.setMeta} onInstrument={onInstrument} pianoPanel={pianoPanel} />
         <BoardSettings meta={meta} onMeta={board.setMeta} />
         <Board state={state} selectedId={draft?.editingId} onReorder={board.reorder} onEdit={edit}
           onDuplicate={board.duplicateCard} onRemove={board.removeCard} onMeta={board.setMeta}
           onPlay={(c: CardItem, w) => play(c.pitch, w, c.id)} loading={loading} />
       </main>
-      <PianoDrawer open={pianoOpen} onToggle={() => setPianoOpen(!pianoOpen)}
-        soundOnClick={soundOnClick} onSoundOnClick={setSoundOnClick} soundVoice={soundVoice} onSoundVoice={setSoundVoice}>
-        <PianoKeyboard bands={bands} offset={meta.pitchMode === 'concert' ? semis : 0} playable={playable}
-          selected={draft ? toMidi(draft.pitch) : undefined} preferFlats={meta.pitchMode === 'concert' && prefersFlats(semis)}
-          mode={meta.pitchMode} spellWritten={(m) => spellWrittenPitch(meta.instrument, meta.horn, m)}
-          onSelect={selectNote} />
-      </PianoDrawer>
       <AboutDialog open={about} onClose={() => setAbout(false)} />
       {toastNode}
     </div>
