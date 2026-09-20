@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { BoardMeta, CardDraft, TextKey } from '@/state/types';
 import { autoHeading, autoSubtitle } from '@/state/resolve';
-import { fingeringsFor, getInstrument, listInstruments, semitones } from '@/music/instruments';
+import { fingeringsFor, getInstrument, listInstruments, semitones, type InstrumentId } from '@/music/instruments';
 import { toMidi } from '@/music/pitch';
 import { resolveStyle } from '@/state/resolve';
 import { WindCard } from './WindCard';
@@ -11,6 +11,11 @@ import { Button, Segmented, Slider } from './ui';
 import { INSTRUMENT_ICONS } from './instrumentIcons';
 
 export interface BuilderDraft extends CardDraft { editingId?: string }
+
+/** Thin, tall silhouettes (flute, clarinet, tin whistle, Nuvo Dood/TooT,
+ * recorder) render as near-invisible hairlines upright in a square tile;
+ * rotated 45° they use the tile's diagonal and are actually legible. */
+const THIN_SILHOUETTES = new Set<InstrumentId>(['flute', 'clarinet', 'tin-whistle', 'nuvo-dood', 'nuvo-toot', 'recorder']);
 
 export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay, loadingPlay, onMeta, onInstrument, pianoPanel }: {
   draft: BuilderDraft | null; meta: BoardMeta;
@@ -29,35 +34,50 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
 
   return (
     <section className="wc-builder space-y-6 rounded-3xl border border-hairline bg-surface/80 p-6 shadow-glow backdrop-blur">
-      <div className="wc-builder-settings-main flex flex-wrap items-center gap-3 rounded-2xl border border-hairline bg-canvas p-4"
+      <div className="wc-builder-settings-main flex flex-col gap-3 rounded-2xl border border-hairline bg-canvas p-4"
         role="group" aria-label="Board settings">
         <div role="radiogroup" aria-label="Instrument" className="wc-instrument-picker flex flex-wrap gap-2">
-          {listInstruments().map((i) => (
-            <button key={i.id} type="button" role="radio" aria-checked={meta.instrument === i.id} aria-label={i.name} title={i.name}
-              onClick={() => onInstrument(i.id)}
-              className={`wc-instrument-icon btn-instrument-icon flex size-11 items-center justify-center rounded-xl p-1.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
-                meta.instrument === i.id
-                  ? 'bg-accent-soft opacity-100 ring-2 ring-accent shadow-glow'
-                  : 'opacity-50 grayscale hover:opacity-80'
-              }`}>
-              <img src={INSTRUMENT_ICONS[i.id]} alt="" className="wc-instrument-icon-img size-7" />
-            </button>
-          ))}
+          {listInstruments().map((i) => {
+            const selected = meta.instrument === i.id;
+            // These silhouettes are thin verticals that read as near-invisible
+            // hairlines upright; rotating the artwork 45° puts them on the
+            // diagonal of the square tile, where they're actually legible.
+            const thin = THIN_SILHOUETTES.has(i.id);
+            return (
+              <button key={i.id} type="button" role="radio" aria-checked={selected} aria-label={i.name} title={i.name}
+                onClick={() => onInstrument(i.id)}
+                className={`wc-instrument-icon btn-instrument-icon group flex w-18 flex-col items-center gap-1 rounded-2xl p-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                  selected ? 'bg-accent-soft ring-2 ring-accent shadow-glow' : 'hover:bg-surface'
+                }`}>
+                <span className="wc-instrument-icon-tile flex size-16 items-center justify-center overflow-hidden">
+                  <img src={INSTRUMENT_ICONS[i.id]} alt=""
+                    className={`wc-instrument-icon-img h-full w-full object-contain p-1 transition ${thin ? 'rotate-45' : ''} ${
+                      selected ? 'opacity-100' : 'opacity-50 grayscale group-hover:opacity-80'
+                    }`} />
+                </span>
+                <span aria-hidden="true" className={`wc-instrument-icon-label text-[10px] leading-tight ${selected ? 'font-medium text-accent' : 'text-muted'}`}>
+                  {i.shortName}
+                </span>
+              </button>
+            );
+          })}
         </div>
-        {info.horns.length > 0 && (
-          <select aria-label="Horn" value={meta.horn ?? ''} onChange={(e) => onInstrument(meta.instrument, e.target.value)}
-            className="wc-horn-select rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm">
-            {info.horns.map((h) => <option key={h.id} className="wc-horn-option" value={h.id}>{h.name}</option>)}
-          </select>
-        )}
-        <Segmented label="Pitch" value={meta.pitchMode} onChange={(pitchMode) => onMeta({ pitchMode })}
-          options={[{ value: 'written', label: 'Written' }, { value: 'concert', label: 'Concert' }]} />
-        <Segmented label="Music font" value={meta.musicFont} onChange={(musicFont) => onMeta({ musicFont })}
-          options={[{ value: 'bravura', label: 'Bravura' }, { value: 'petaluma', label: 'Petaluma' }]} />
-        <Segmented label="Diagram" value={meta.diagramOrient} onChange={(diagramOrient) => onMeta({ diagramOrient })}
-          options={[{ value: 'vertical', label: 'Upright' }, { value: 'horizontal', label: 'Sideways' }]} />
-        <Segmented label="Columns" value={String(meta.columns)} onChange={(c) => onMeta({ columns: c === 'auto' ? 'auto' : Number(c) })}
-          options={[{ value: 'auto', label: 'Auto' }, { value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }]} />
+        <div className="wc-builder-settings-row flex flex-wrap items-center gap-3">
+          {info.horns.length > 0 && (
+            <select aria-label="Horn" value={meta.horn ?? ''} onChange={(e) => onInstrument(meta.instrument, e.target.value)}
+              className="wc-horn-select rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm">
+              {info.horns.map((h) => <option key={h.id} className="wc-horn-option" value={h.id}>{h.name}</option>)}
+            </select>
+          )}
+          <Segmented label="Pitch" value={meta.pitchMode} onChange={(pitchMode) => onMeta({ pitchMode })}
+            options={[{ value: 'written', label: 'Written' }, { value: 'concert', label: 'Concert' }]} />
+          <Segmented label="Music font" value={meta.musicFont} onChange={(musicFont) => onMeta({ musicFont })}
+            options={[{ value: 'bravura', label: 'Bravura' }, { value: 'petaluma', label: 'Petaluma' }]} />
+          <Segmented label="Diagram" value={meta.diagramOrient} onChange={(diagramOrient) => onMeta({ diagramOrient })}
+            options={[{ value: 'vertical', label: 'Upright' }, { value: 'horizontal', label: 'Sideways' }]} />
+          <Segmented label="Columns" value={String(meta.columns)} onChange={(c) => onMeta({ columns: c === 'auto' ? 'auto' : Number(c) })}
+            options={[{ value: 'auto', label: 'Auto' }, { value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }]} />
+        </div>
       </div>
       <div className="wc-builder-grid grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
       <div className="wc-builder-preview grid min-h-64 place-items-center gap-2 rounded-2xl bg-canvas p-4">
