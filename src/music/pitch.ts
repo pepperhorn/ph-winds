@@ -18,14 +18,14 @@ export const pitchKey = (p: Pitch) => `${p.step}${acc(p.alter, '#', 'b')}${p.oct
 export const formatPitch = (p: Pitch) => `${p.step}${acc(p.alter, '♯', '♭')}${p.octave}`;
 
 /**
- * Both enharmonic spellings for a black-key pitch, sharp first (e.g.
- * "D♯4 / E♭4"), built from the pitch's midi so it doesn't matter whether the
+ * Both enharmonic spellings for a black-key pitch, flat first (e.g.
+ * "E♭4 / D♯4"), built from the pitch's midi so it doesn't matter whether the
  * stored pitch is spelled sharp or flat. Naturals just format plainly.
  */
 export function formatPitchPair(p: Pitch): string {
   const midi = toMidi(p);
   if (!isBlackKey(midi)) return formatPitch(p);
-  return `${formatPitch(fromMidi(midi, false))} / ${formatPitch(fromMidi(midi, true))}`;
+  return `${formatPitch(fromMidi(midi, true))} / ${formatPitch(fromMidi(midi, false))}`;
 }
 
 export const toMidi = (p: Pitch) => (p.octave + 1) * 12 + PC[p.step] + p.alter;

@@ -25,7 +25,7 @@ describe('WindCardsApp', () => {
   });
   it('concert mode maps key clicks to written pitch', async () => {
     render(<WindCardsApp />);   // default: alto sax
-    await userEvent.click(screen.getByRole('radio', { name: 'Played' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Concert Pitch (Piano)' }));
     await userEvent.click(screen.getByRole('button', { name: 'E♭4' }));
     expect(within(document.querySelector('.wc-builder-preview')!).getByText('C5')).toBeInTheDocument();
   });
@@ -41,6 +41,6 @@ describe('WindCardsApp', () => {
     // is spelled D#4 by the flute fingering chart (its own spelling wins).
     expect(board.querySelectorAll('.wc-card')).toHaveLength(1);
     expect(within(board).queryByText('C5')).toBeNull();
-    expect(within(board).getByText('D♯4 / E♭4')).toBeInTheDocument();
+    expect(within(board).getByText('E♭4 / D♯4')).toBeInTheDocument();
   });
 });

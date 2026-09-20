@@ -5,7 +5,7 @@ import { semitones } from '@/music/instruments';
 export const autoHeading = (p: Pitch) => formatPitchPair(p);
 
 export const autoSubtitle = (p: Pitch, semis: number) =>
-  semis === 0 ? '' : `played ${formatPitchPair(transposePitch(p, semis))}`;
+  semis === 0 ? '' : `Concert Pitch: ${formatPitchPair(transposePitch(p, semis))}`;
 
 const KEYS: TextKey[] = ['heading', 'subtitle', 'footer'];
 

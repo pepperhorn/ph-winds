@@ -13,11 +13,11 @@ describe('pitch', () => {
     expect(pitchKey({ step: 'F', alter: 1, octave: 4 })).toBe('F#4');
     expect(formatPitch({ step: 'B', alter: -1, octave: 3 })).toBe('B♭3');
   });
-  it('formats enharmonic pairs for altered pitches, sharp first, regardless of stored spelling', () => {
-    expect(formatPitchPair(parsePitch('D#4'))).toBe('D♯4 / E♭4');
-    expect(formatPitchPair(parsePitch('Eb4'))).toBe('D♯4 / E♭4');
-    expect(formatPitchPair(parsePitch('A#3'))).toBe('A♯3 / B♭3');
-    expect(formatPitchPair(parsePitch('Gb5'))).toBe('F♯5 / G♭5');
+  it('formats enharmonic pairs for altered pitches, flat first, regardless of stored spelling', () => {
+    expect(formatPitchPair(parsePitch('D#4'))).toBe('E♭4 / D♯4');
+    expect(formatPitchPair(parsePitch('Eb4'))).toBe('E♭4 / D♯4');
+    expect(formatPitchPair(parsePitch('A#3'))).toBe('B♭3 / A♯3');
+    expect(formatPitchPair(parsePitch('Gb5'))).toBe('G♭5 / F♯5');
     expect(formatPitchPair(parsePitch('C5'))).toBe('C5');
   });
   it('does not respell an enharmonic-natural pitch into a bogus duplicate pair', () => {
@@ -26,9 +26,9 @@ describe('pitch', () => {
     expect(formatPitchPair(parsePitch('Cb4'))).toBe('C♭4');
     expect(formatPitchPair(parsePitch('Fb2'))).toBe('F♭2');
     expect(formatPitchPair(parsePitch('B#3'))).toBe('B♯3');
-    // a genuine black-key pitch still produces the sharp-first pair
-    expect(formatPitchPair(parsePitch('C#4'))).toBe('C♯4 / D♭4');
-    expect(formatPitchPair(parsePitch('Db4'))).toBe('C♯4 / D♭4');
+    // a genuine black-key pitch still produces the flat-first pair
+    expect(formatPitchPair(parsePitch('C#4'))).toBe('D♭4 / C♯4');
+    expect(formatPitchPair(parsePitch('Db4'))).toBe('D♭4 / C♯4');
   });
   it('midi round trip', () => {
     expect(toMidi(parsePitch('C4'))).toBe(60);

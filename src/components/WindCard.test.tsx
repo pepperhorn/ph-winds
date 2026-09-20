@@ -13,7 +13,7 @@ describe('WindCard', () => {
   it('shows heading, subtitle, diagram and staff by default', () => {
     const { container } = render(<WindCard card={newCardDraft(parsePitch('C5'))} meta={meta} />);
     expect(screen.getByText('C5')).toBeInTheDocument();
-    expect(screen.getByText('played D♯4 / E♭4')).toBeInTheDocument();
+    expect(screen.getByText('Concert Pitch: E♭4 / D♯4')).toBeInTheDocument();
     expect(container.querySelector('.wc-fingering svg')).not.toBeNull();
     expect(screen.getByTestId('staff')).toBeInTheDocument();
   });

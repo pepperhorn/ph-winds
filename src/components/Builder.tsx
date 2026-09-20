@@ -72,7 +72,7 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
           <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-pitch">
             <span id="wc-settings-caption-pitch" className="wc-settings-caption text-[11px] text-muted">Written as:</span>
             <Segmented label="Pitch" value={meta.pitchMode} onChange={(pitchMode) => onMeta({ pitchMode })}
-              options={[{ value: 'written', label: 'Written' }, { value: 'concert', label: 'Played' }]} />
+              options={[{ value: 'written', label: 'Played' }, { value: 'concert', label: 'Concert Pitch (Piano)' }]} />
           </div>
           <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-font">
             <span id="wc-settings-caption-font" className="wc-settings-caption text-[11px] text-muted">Notation:</span>
