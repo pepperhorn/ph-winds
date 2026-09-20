@@ -32,7 +32,7 @@ describe('WindCardsApp', () => {
     const board = document.getElementById('wc-board-export')!;
     expect(within(board).getByText('C5')).toBeInTheDocument();
 
-    await userEvent.selectOptions(screen.getByLabelText('Instrument'), 'flute');
+    await userEvent.click(screen.getByRole('radio', { name: 'Flute (Boehm, C foot)' }));
     // alto sax (-9) C5 sounds Eb4 (midi 63); flute (0) written at that midi
     // is spelled D#4 by the flute fingering chart (its own spelling wins).
     expect(board.querySelectorAll('.wc-card')).toHaveLength(1);

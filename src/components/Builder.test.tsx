@@ -44,7 +44,7 @@ describe('Builder', () => {
     const onInstrument = vi.fn();
     const confirm = vi.spyOn(window, 'confirm');
     render(<Builder draft={null} meta={meta} onChange={vi.fn()} onCommit={vi.fn()} onCancelEdit={vi.fn()} onPlay={vi.fn()} onMeta={vi.fn()} onInstrument={onInstrument} />);
-    await userEvent.selectOptions(screen.getByLabelText('Instrument'), 'flute');
+    await userEvent.click(screen.getByRole('radio', { name: 'Flute (Boehm, C foot)' }));
     expect(confirm).not.toHaveBeenCalled();
     expect(onInstrument).toHaveBeenCalledWith('flute');
   });

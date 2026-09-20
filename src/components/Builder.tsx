@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { BoardMeta, CardDraft, TextKey } from '@/state/types';
 import { autoHeading, autoSubtitle } from '@/state/resolve';
 import { fingeringsFor, getInstrument, listInstruments, semitones } from '@/music/instruments';
@@ -7,14 +8,16 @@ import { WindCard } from './WindCard';
 import { FingeringView } from './FingeringView';
 import { TextFieldControls } from './TextFieldControls';
 import { Button, Segmented, Slider } from './ui';
+import { INSTRUMENT_ICONS } from './instrumentIcons';
 
 export interface BuilderDraft extends CardDraft { editingId?: string }
 
-export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay, loadingPlay, onMeta, onInstrument }: {
+export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay, loadingPlay, onMeta, onInstrument, pianoPanel }: {
   draft: BuilderDraft | null; meta: BoardMeta;
   onChange(d: BuilderDraft): void; onCommit(): void; onCancelEdit(): void; onPlay(which: 'voice' | 'piano'): void;
   loadingPlay?: 'voice' | 'piano';
   onMeta(p: Partial<BoardMeta>): void; onInstrument(id: string, horn?: string): void;
+  pianoPanel?: ReactNode;
 }) {
   const set = (p: Partial<BuilderDraft>) => draft && onChange({ ...draft, ...p });
   const options = draft ? fingeringsFor(meta.instrument, meta.horn, toMidi(draft.pitch)) : [];
@@ -26,16 +29,23 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
 
   return (
     <section className="wc-builder space-y-6 rounded-3xl border border-hairline bg-surface/80 p-6 shadow-glow backdrop-blur">
-      <div className="wc-board-settings-main flex flex-wrap items-center gap-3 rounded-2xl border border-hairline bg-canvas p-4">
-        <label className="wc-instrument-select flex items-center gap-2 text-sm">
-          <span className="wc-instrument-select-label text-muted">Instrument</span>
-          <select aria-label="Instrument" value={meta.instrument} onChange={(e) => onInstrument(e.target.value)}
-            className="wc-instrument-select-input rounded-lg border border-hairline bg-surface px-2 py-1.5 font-medium">
-            {listInstruments().map((i) => <option key={i.id} className="wc-instrument-option" value={i.id}>{i.name}</option>)}
-          </select>
-        </label>
+      <div className="wc-builder-settings-main flex flex-wrap items-center gap-3 rounded-2xl border border-hairline bg-canvas p-4"
+        role="group" aria-label="Board settings">
+        <div role="radiogroup" aria-label="Instrument" className="wc-instrument-picker flex flex-wrap gap-2">
+          {listInstruments().map((i) => (
+            <button key={i.id} type="button" role="radio" aria-checked={meta.instrument === i.id} aria-label={i.name} title={i.name}
+              onClick={() => onInstrument(i.id)}
+              className={`wc-instrument-icon btn-instrument-icon flex size-11 items-center justify-center rounded-xl p-1.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                meta.instrument === i.id
+                  ? 'bg-accent-soft opacity-100 ring-2 ring-accent shadow-glow'
+                  : 'opacity-50 grayscale hover:opacity-80'
+              }`}>
+              <img src={INSTRUMENT_ICONS[i.id]} alt="" className="wc-instrument-icon-img size-7" />
+            </button>
+          ))}
+        </div>
         {info.horns.length > 0 && (
-          <select aria-label="Horn" value={meta.horn} onChange={(e) => onInstrument(meta.instrument, e.target.value)}
+          <select aria-label="Horn" value={meta.horn ?? ''} onChange={(e) => onInstrument(meta.instrument, e.target.value)}
             className="wc-horn-select rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm">
             {info.horns.map((h) => <option key={h.id} className="wc-horn-option" value={h.id}>{h.name}</option>)}
           </select>
@@ -55,7 +65,7 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
           ? <>
               <WindCard card={draft} meta={meta} onPlay={onPlay} showPlay="always" loadingPlay={loadingPlay} />
               {unavailable && (
-                <p className="wc-builder-unavailable-hint text-xs text-muted">Pick another note — this one isn't available on {info.shortName}.</p>
+                <p id="builder-unavailable-hint" className="wc-builder-unavailable-hint text-xs text-muted">Pick another note — this one isn't available on {info.shortName}.</p>
               )}
             </>
           : <p className="wc-builder-empty text-sm text-muted">Pick a note on the keyboard below</p>}
@@ -88,13 +98,15 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
           <TextFieldControls label="Footer" value={draft?.text?.footer ?? {}} base={meta.cardText.footer} onChange={(p) => setText('footer', p)} />
         </div>
         <div className="wc-builder-actions flex items-center gap-3">
-          <Button variant="filled" disabled={!draft || unavailable} onClick={onCommit} className="btn-add-card">
+          <Button variant="filled" disabled={!draft || unavailable} onClick={onCommit} className="btn-add-card"
+            aria-describedby={unavailable ? 'builder-unavailable-hint' : undefined}>
             {draft?.editingId ? 'Update card' : 'Add to board'}
           </Button>
           {draft?.editingId && <Button variant="text" onClick={onCancelEdit} className="btn-cancel-edit">Cancel</Button>}
         </div>
       </div>
       </div>
+      {pianoPanel && <div className="wc-builder-piano">{pianoPanel}</div>}
     </section>
   );
 }
