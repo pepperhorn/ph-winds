@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { BoardMeta, BoardState, CardItem, TextField } from '@/state/types';
 import { WindCard } from './WindCard';
+import { hasFingering } from '@/music/instruments';
+import { toMidi } from '@/music/pitch';
 
 const ALIGN = { left: 'text-left', center: 'text-center', right: 'text-right' } as const;
 const TITLE = { S: 'text-xl', M: 'text-2xl', L: 'text-3xl' } as const;
@@ -64,8 +66,9 @@ export function Board({ state, onReorder, onEdit, onDuplicate, onRemove, onMeta,
           <div className={`wc-board-grid mt-6 gap-5 overflow-x-auto ${grid}`}>
             {items.map((c) => {
               const loadingPlay = loading?.key === c.id ? loading.which : undefined;
+              const unavailable = !hasFingering(meta.instrument, meta.horn, toMidi(c.pitch));
               return (
-              <div key={c.id} draggable={armed === c.id}
+              <div key={c.id} draggable={armed === c.id} data-export-hide={unavailable || undefined}
                 onDragStart={(e) => { setDrag(c.id); e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; }}
                 onDragEnd={() => { setDrag(null); setArmed(null); }}
                 onDragOver={(e) => { if (drag) e.preventDefault(); }}

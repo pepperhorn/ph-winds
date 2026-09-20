@@ -26,7 +26,11 @@ export function boardReducer(s: BoardState, a: BoardAction): BoardState {
         const newWrittenMidi = toMidi(c.pitch) + oldSemis - newSemis;
         return { ...c, pitch: spellWritten(a.instrument, horn, newWrittenMidi), fingeringIndex: 0 };
       });
-      return { ...s, items, meta: { ...s.meta, instrument: a.instrument, horn, style: { ...s.meta.style, variants: DEFAULT_STYLE.variants } } };
+      // Variant names are layout-scoped: only reset them on a true instrument
+      // change (e.g. saxophone -> flute). A horn-only switch on the same
+      // instrument (e.g. alto -> tenor sax) must keep the user's variants.
+      const variants = a.instrument !== s.meta.instrument ? DEFAULT_STYLE.variants : s.meta.style.variants;
+      return { ...s, items, meta: { ...s.meta, instrument: a.instrument, horn, style: { ...s.meta.style, variants } } };
     }
     case 'add': return { ...s, items: [...s.items, a.card] };
     case 'update': return { ...s, items: s.items.map((c) => (c.id === a.id ? { ...c, ...a.patch } : c)) };

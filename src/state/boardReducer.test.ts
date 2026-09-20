@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { boardReducer } from './boardReducer';
-import { createBoard, newCardDraft } from './defaults';
-import { formatPitch, parsePitch } from '@/music/pitch';
+import { createBoard, newCardDraft, DEFAULT_STYLE } from './defaults';
+import { formatPitch, parsePitch, toMidi } from '@/music/pitch';
+import { fingeringsFor } from '@/music/instruments';
 
 const card = (id: string, n = 'C5') => ({ id, ...newCardDraft(parsePitch(n)) });
 const withCards = (...ids: string[]) => ids.reduce((s, id) => boardReducer(s, { type: 'add', card: card(id) }), createBoard());
@@ -71,6 +72,40 @@ describe('boardReducer', () => {
     expect(c.scale).toBe(1.5);
     expect(c.text).toEqual({ heading: { text: 'My note' } });
     expect(c.style).toEqual({ look: 'dotted' });
+  });
+  it('keeps style.variants on a horn-only switch (same instrument)', () => {
+    let s = boardReducer(createBoard('saxophone'), { type: 'setMeta', patch: { style: { ...createBoard('saxophone').meta.style, variants: ['palm-bean'] } } });
+    s = boardReducer(s, { type: 'setInstrument', instrument: 'saxophone', horn: 'tenor' });
+    expect(s.meta.instrument).toBe('saxophone');
+    expect(s.meta.horn).toBe('tenor');
+    expect(s.meta.style.variants).toEqual(['palm-bean']);
+  });
+  it('resets style.variants to the default on a true instrument change', () => {
+    let s = boardReducer(createBoard('saxophone'), { type: 'setMeta', patch: { style: { ...createBoard('saxophone').meta.style, variants: ['palm-bean'] } } });
+    s = boardReducer(s, { type: 'setInstrument', instrument: 'flute' });
+    expect(s.meta.instrument).toBe('flute');
+    expect(s.meta.style.variants).toEqual(DEFAULT_STYLE.variants);
+  });
+  it('remaps written pitch across an octave-transposing instrument: recorder C5 -> flute C6', () => {
+    // recorder transposes +12 (sounds an octave above written); flute is
+    // untransposed. To keep the sounding pitch, the written note must move
+    // up an octave: recorder C5 (written) -> flute C6 (written).
+    let s = boardReducer(createBoard('recorder'), { type: 'add', card: card('a', 'C5') });
+    s = boardReducer(s, { type: 'setInstrument', instrument: 'flute' });
+    expect(formatPitch(s.items[0].pitch)).toBe('C6');
+  });
+  it('tin-whistle horn switch is an identity remap (all horns are transpose 0)', () => {
+    let s = boardReducer(createBoard('tin-whistle'), { type: 'add', card: card('a', 'D5') });
+    s = boardReducer(s, { type: 'setInstrument', instrument: 'tin-whistle', horn: 'C' });
+    expect(formatPitch(s.items[0].pitch)).toBe('D5');
+  });
+  it('round trips through an unavailable instrument: flute C7 -> trombone (unavailable) -> flute', () => {
+    let s = boardReducer(createBoard('flute'), { type: 'add', card: card('a', 'C7') });
+    s = boardReducer(s, { type: 'setInstrument', instrument: 'trombone' });
+    // C7 written is well outside trombone's playable range — no fingering.
+    expect(fingeringsFor('trombone', undefined, toMidi(s.items[0].pitch))).toEqual([]);
+    s = boardReducer(s, { type: 'setInstrument', instrument: 'flute' });
+    expect(formatPitch(s.items[0].pitch)).toBe('C7');
   });
   it('clear empties the board without touching meta', () => {
     const s = boardReducer(withCards('a', 'b'), { type: 'clear' });

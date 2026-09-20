@@ -1,6 +1,6 @@
 import type { BoardMeta, CardItem, TextField } from '@/state/types';
 import { resolveCardText, resolveStyle } from '@/state/resolve';
-import { fingeringsFor, getInstrument, type InstrumentInfo } from '@/music/instruments';
+import { fingeringsFor, hasFingering, getInstrument, type InstrumentInfo } from '@/music/instruments';
 import { formatPitch, toMidi } from '@/music/pitch';
 import { StaffNote } from '@/notation/StaffNote';
 import { FingeringView } from './FingeringView';
@@ -36,7 +36,7 @@ export interface WindCardProps {
 export function WindCard({ card, meta, onPlay, showPlay = 'hover', loadingPlay, className = '' }: WindCardProps) {
   const info = getInstrument(meta.instrument);
   const options = fingeringsFor(meta.instrument, meta.horn, toMidi(card.pitch));
-  const unavailable = options.length === 0;
+  const unavailable = !hasFingering(meta.instrument, meta.horn, toMidi(card.pitch));
 
   if (unavailable) {
     return (

@@ -20,6 +20,16 @@ describe('pitch', () => {
     expect(formatPitchPair(parsePitch('Gb5'))).toBe('F♯5 / G♭5');
     expect(formatPitchPair(parsePitch('C5'))).toBe('C5');
   });
+  it('does not respell an enharmonic-natural pitch into a bogus duplicate pair', () => {
+    // Cb4 (alter -1) is a white key (== B3); it must keep its deliberate
+    // spelling, not get respelled into a "B3 / B3"-style duplicate.
+    expect(formatPitchPair(parsePitch('Cb4'))).toBe('C♭4');
+    expect(formatPitchPair(parsePitch('Fb2'))).toBe('F♭2');
+    expect(formatPitchPair(parsePitch('B#3'))).toBe('B♯3');
+    // a genuine black-key pitch still produces the sharp-first pair
+    expect(formatPitchPair(parsePitch('C#4'))).toBe('C♯4 / D♭4');
+    expect(formatPitchPair(parsePitch('Db4'))).toBe('C♯4 / D♭4');
+  });
   it('midi round trip', () => {
     expect(toMidi(parsePitch('C4'))).toBe(60);
     expect(toMidi(parsePitch('Bb3'))).toBe(58);

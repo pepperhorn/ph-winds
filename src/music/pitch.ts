@@ -23,8 +23,8 @@ export const formatPitch = (p: Pitch) => `${p.step}${acc(p.alter, '♯', '♭')}
  * stored pitch is spelled sharp or flat. Naturals just format plainly.
  */
 export function formatPitchPair(p: Pitch): string {
-  if (p.alter === 0) return formatPitch(p);
   const midi = toMidi(p);
+  if (!isBlackKey(midi)) return formatPitch(p);
   return `${formatPitch(fromMidi(midi, false))} / ${formatPitch(fromMidi(midi, true))}`;
 }
 

@@ -99,6 +99,14 @@ export function fingeringsFor(id: string, horn: string | undefined, writtenMidi:
   return [main, ...alternates.map((a, i) => ({ ...a, note: main.note, octave: main.octave, note_text: `Alt ${i + 1}` }))];
 }
 
+/** Whether `id`/`horn` has any fingering for a given written pitch — shared
+ * predicate for the unavailable-card check (used by both `WindCard` and
+ * `Board`, which need to agree so the export filter doesn't leave a
+ * spurious gap where the card itself is hidden but its wrapper isn't). */
+export function hasFingering(id: string, horn: string | undefined, writtenMidi: number): boolean {
+  return fingeringsFor(id, horn, writtenMidi).length > 0;
+}
+
 export const playableMidis = (id: string, horn?: string) => new Set(fingeringSheet(id, horn).map(fMidi));
 
 export function spellWritten(id: string, horn: string | undefined, writtenMidi: number): Pitch {

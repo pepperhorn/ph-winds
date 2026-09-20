@@ -79,4 +79,22 @@ describe('Board', () => {
     // No spinner UI assertion here (that lives in WindCard); this just
     // exercises the prop-plumbing path without throwing.
   });
+
+  it('marks the board-item wrapper data-export-hide when the card has no fingering, but not when it does', () => {
+    const state = createBoard('flute');
+    const cards: CardItem[] = [
+      // flute has no fingering this low — unavailable
+      { ...newCardDraft(parsePitch('C1')), id: 'unavailable' },
+      // ordinary flute note — available
+      { ...newCardDraft(parsePitch('C5')), id: 'available' },
+    ];
+    const { container } = render(
+      <Board state={{ ...state, items: cards }} onReorder={noop} onEdit={noop} onDuplicate={noop} onRemove={noop} onMeta={noop} onPlay={noop} />
+    );
+    const items = container.querySelectorAll('.wc-board-item');
+    expect(items.length).toBe(2);
+    const [unavailableItem, availableItem] = Array.from(items);
+    expect(unavailableItem.hasAttribute('data-export-hide')).toBe(true);
+    expect(availableItem.hasAttribute('data-export-hide')).toBe(false);
+  });
 });
