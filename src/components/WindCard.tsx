@@ -1,7 +1,7 @@
 import type { BoardMeta, CardItem, TextField } from '@/state/types';
 import { resolveCardText, resolveStyle } from '@/state/resolve';
-import { fingeringsFor, getInstrument } from '@/music/instruments';
-import { toMidi } from '@/music/pitch';
+import { fingeringsFor, getInstrument, type InstrumentInfo } from '@/music/instruments';
+import { formatPitch, toMidi } from '@/music/pitch';
 import { StaffNote } from '@/notation/StaffNote';
 import { FingeringView } from './FingeringView';
 
@@ -16,6 +16,14 @@ function Line({ f, kind, cls }: { f: TextField; kind: 'heading' | 'other'; cls: 
   return <div className={`${cls} w-full ${SIZE[kind][f.size]} ${ALIGN[f.align]} ${kind === 'heading' ? 'font-semibold text-ink' : 'text-muted'}`}>{f.text}</div>;
 }
 
+/** Short, readable label for the "not available on …" line: horn name plus
+ * instrument name when the instrument has horns (e.g. "E♭ alto Saxophone"),
+ * otherwise just the instrument name. */
+function unavailableLabel(info: InstrumentInfo, hornId?: string): string {
+  const horn = info.horns.find((h) => h.id === hornId);
+  return horn ? `${horn.name} ${info.name}` : info.name;
+}
+
 export interface WindCardProps {
   card: Pick<CardItem, 'pitch' | 'fingeringIndex' | 'display' | 'orientation' | 'scale' | 'text' | 'style'>;
   meta: BoardMeta;
@@ -27,9 +35,21 @@ export interface WindCardProps {
 
 export function WindCard({ card, meta, onPlay, showPlay = 'hover', loadingPlay, className = '' }: WindCardProps) {
   const info = getInstrument(meta.instrument);
+  const options = fingeringsFor(meta.instrument, meta.horn, toMidi(card.pitch));
+  const unavailable = options.length === 0;
+
+  if (unavailable) {
+    return (
+      <div data-orientation={card.orientation} data-display={card.display} data-export-hide
+        className={`wc-card wc-card--unavailable relative flex flex-col items-center gap-1.5 rounded-2xl border border-hairline bg-surface p-4 opacity-[0.55] ${className}`}>
+        <div className="wc-card-unavailable-note text-sm font-semibold text-ink">{formatPitch(card.pitch)}</div>
+        <div className="wc-card-unavailable-text text-xs text-muted">not available on {unavailableLabel(info, meta.horn)}</div>
+      </div>
+    );
+  }
+
   const text = resolveCardText(card, meta);
   const style = resolveStyle(card, meta);
-  const options = fingeringsFor(meta.instrument, meta.horn, toMidi(card.pitch));
   const fingering = options[Math.min(card.fingeringIndex, options.length - 1)];
   const dW = Math.round(BASE_DIAGRAM_WIDTH * card.scale);
   const sW = Math.round(BASE_STAFF_WIDTH * card.scale);
@@ -46,9 +66,7 @@ export function WindCard({ card, meta, onPlay, showPlay = 'hover', loadingPlay, 
           than its fixed-width diagram/staff children, fall back to start-alignment
           instead of centering, which would clip both sides equally. */}
       <div className={`wc-card-body flex items-center [justify-content:safe_center] gap-4 ${horizontal ? 'flex-row' : 'flex-col'}`}>
-        {showDiagram && (fingering
-          ? <FingeringView layout={info.layout} fingering={fingering} style={style} orient={meta.diagramOrient} width={dW} />
-          : <div className="wc-fingering-missing text-xs text-muted" style={{ width: dW }}>No fingering</div>)}
+        {showDiagram && <FingeringView layout={info.layout} fingering={fingering} style={style} orient={meta.diagramOrient} width={dW} />}
         {showStaff && <StaffNote pitch={card.pitch} clef={info.clef} font={meta.musicFont} width={sW} />}
       </div>
       <Line f={text.footer} kind="other" cls="wc-card-footer" />

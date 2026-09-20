@@ -34,9 +34,21 @@ describe('WindCard', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Play piano' }));
     expect(onPlay.mock.calls).toEqual([['voice'], ['piano']]);
   });
-  it('shows a placeholder when the note has no fingering', () => {
-    render(<WindCard card={newCardDraft(parsePitch('C2'))} meta={meta} />);
-    expect(screen.getByText('No fingering')).toBeInTheDocument();
+  it('renders a greyed unavailable card when the note has no fingering, with no diagram/staff/play buttons', () => {
+    const onPlay = vi.fn();
+    const { container } = render(<WindCard card={newCardDraft(parsePitch('C2'))} meta={meta} onPlay={onPlay} showPlay="always" />);
+    expect(container.querySelector('.wc-card--unavailable')).not.toBeNull();
+    expect(screen.getByText('C2')).toBeInTheDocument();
+    expect(screen.getByText('not available on E♭ alto Saxophone')).toBeInTheDocument();
+    expect(container.querySelector('.wc-fingering')).toBeNull();
+    expect(screen.queryByTestId('staff')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Play voice' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Play piano' })).toBeNull();
+    expect(container.querySelector('.wc-card')).toHaveAttribute('data-export-hide');
+  });
+  it('an available card carries no data-export-hide attribute', () => {
+    const { container } = render(<WindCard card={newCardDraft(parsePitch('C5'))} meta={meta} />);
+    expect(container.querySelector('.wc-card')).not.toHaveAttribute('data-export-hide');
   });
   it('marks the play-voice button as busy while its voice loads', () => {
     render(<WindCard card={newCardDraft(parsePitch('C5'))} meta={meta} onPlay={vi.fn()} showPlay="always" loadingPlay="voice" />);
