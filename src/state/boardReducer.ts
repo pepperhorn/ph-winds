@@ -1,5 +1,6 @@
 import type { BoardMeta, BoardState, CardDraft, CardItem } from './types';
-import { getInstrument } from '@/music/instruments';
+import { getInstrument, semitones, spellWritten } from '@/music/instruments';
+import { toMidi } from '@/music/pitch';
 import { DEFAULT_STYLE } from './defaults';
 
 export type BoardAction =
@@ -18,7 +19,14 @@ export function boardReducer(s: BoardState, a: BoardAction): BoardState {
     case 'setMeta': return { ...s, meta: { ...s.meta, ...a.patch } };
     case 'setInstrument': {
       const info = getInstrument(a.instrument);
-      return { ...s, items: [], meta: { ...s.meta, instrument: a.instrument, horn: a.horn ?? info.defaultHorn, style: { ...s.meta.style, variants: DEFAULT_STYLE.variants } } };
+      const horn = a.horn ?? info.defaultHorn;
+      const oldSemis = semitones(s.meta.instrument, s.meta.horn);
+      const newSemis = semitones(a.instrument, horn);
+      const items = s.items.map((c) => {
+        const newWrittenMidi = toMidi(c.pitch) + oldSemis - newSemis;
+        return { ...c, pitch: spellWritten(a.instrument, horn, newWrittenMidi), fingeringIndex: 0 };
+      });
+      return { ...s, items, meta: { ...s.meta, instrument: a.instrument, horn, style: { ...s.meta.style, variants: DEFAULT_STYLE.variants } } };
     }
     case 'add': return { ...s, items: [...s.items, a.card] };
     case 'update': return { ...s, items: s.items.map((c) => (c.id === a.id ? { ...c, ...a.patch } : c)) };
