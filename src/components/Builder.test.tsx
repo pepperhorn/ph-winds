@@ -33,6 +33,13 @@ describe('Builder', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Update card' }));
     expect(onCommit).toHaveBeenCalled();
   });
+  it('disables Add to board and shows a hint when the drafted note has no fingering on the current instrument', () => {
+    const draft = newCardDraft(parsePitch('C2')); // out of range for every instrument here
+    render(<Builder draft={draft} meta={meta} onChange={vi.fn()} onCommit={vi.fn()} onCancelEdit={vi.fn()} onPlay={vi.fn()} {...noop} />);
+    expect(screen.getByRole('button', { name: 'Add to board' })).toBeDisabled();
+    expect(screen.getByText(/not available on Clarinet/)).toBeInTheDocument();
+    expect(document.querySelector('.wc-builder-unavailable-hint')).not.toBeNull();
+  });
   it('carries the board-settings main strip: instrument change calls onInstrument directly, without a confirm prompt', async () => {
     const onInstrument = vi.fn();
     const confirm = vi.spyOn(window, 'confirm');

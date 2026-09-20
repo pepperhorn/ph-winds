@@ -37,6 +37,6 @@ describe('WindCardsApp', () => {
     // is spelled D#4 by the flute fingering chart (its own spelling wins).
     expect(board.querySelectorAll('.wc-card')).toHaveLength(1);
     expect(within(board).queryByText('C5')).toBeNull();
-    expect(within(board).getByText('D♯4')).toBeInTheDocument();
+    expect(within(board).getByText('D♯4 / E♭4')).toBeInTheDocument();
   });
 });

@@ -21,7 +21,7 @@ function Line({ f, kind, cls }: { f: TextField; kind: 'heading' | 'other'; cls: 
  * otherwise just the instrument name. */
 function unavailableLabel(info: InstrumentInfo, hornId?: string): string {
   const horn = info.horns.find((h) => h.id === hornId);
-  return horn ? `${horn.name} ${info.name}` : info.name;
+  return horn ? `${horn.name} ${info.shortName}` : info.shortName;
 }
 
 export interface WindCardProps {

@@ -26,7 +26,7 @@ import { type Pitch, parsePitch, toMidi, fromMidi, prefersFlats } from './pitch'
 
 export type InstrumentId = 'saxophone' | 'clarinet' | 'flute' | 'recorder' | 'tin-whistle' | 'trumpet' | 'trombone' | 'nuvo-dood' | 'nuvo-toot';
 export interface HornOption { id: string; name: string }
-export interface InstrumentInfo { id: InstrumentId; name: string; horns: HornOption[]; defaultHorn?: string; clef: 'G' | 'F'; layout: Layout }
+export interface InstrumentInfo { id: InstrumentId; name: string; shortName: string; horns: HornOption[]; defaultHorn?: string; clef: 'G' | 'F'; layout: Layout }
 export type Band = { low: number; high: number };
 export interface RangeBands { beginner: Band; intermediate: Band; pro: Band }
 
@@ -46,9 +46,25 @@ const CATALOGUE: { layout: Layout; clef: 'G' | 'F'; sheets: Sheets }[] = [
   { layout: nuvoToot, clef: 'G', sheets: () => fToot.fingerings },
 ];
 
+/** Short display name per instrument, for compact UI like the "not available
+ * on …" line — the full `name` (which may carry parentheticals such as
+ * "Recorder (baroque fingering)") stays in the instrument `<select>`. */
+const SHORT_NAMES: Record<InstrumentId, string> = {
+  saxophone: 'Saxophone',
+  clarinet: 'Clarinet',
+  flute: 'Flute',
+  recorder: 'Recorder',
+  'tin-whistle': 'Tin whistle',
+  trumpet: 'Trumpet',
+  trombone: 'Trombone',
+  'nuvo-dood': 'Nuvo Dood',
+  'nuvo-toot': 'Nuvo TooT',
+};
+
 const INFO: InstrumentInfo[] = CATALOGUE.map(({ layout, clef }) => ({
   id: layout.id as InstrumentId,
   name: layout.name,
+  shortName: SHORT_NAMES[layout.id as InstrumentId] ?? layout.name,
   horns: Object.entries(layout.horns ?? {}).map(([id, h]) => ({ id, name: h.name })),
   defaultHorn: layout.horn,
   clef,

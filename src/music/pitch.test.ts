@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsePitch, pitchKey, formatPitch, toMidi, fromMidi, isBlackKey, prefersFlats, transposePitch } from './pitch';
+import { parsePitch, pitchKey, formatPitch, formatPitchPair, toMidi, fromMidi, isBlackKey, prefersFlats, transposePitch } from './pitch';
 
 describe('pitch', () => {
   it('parses ascii and unicode accidentals', () => {
@@ -12,6 +12,13 @@ describe('pitch', () => {
   it('formats', () => {
     expect(pitchKey({ step: 'F', alter: 1, octave: 4 })).toBe('F#4');
     expect(formatPitch({ step: 'B', alter: -1, octave: 3 })).toBe('B♭3');
+  });
+  it('formats enharmonic pairs for altered pitches, sharp first, regardless of stored spelling', () => {
+    expect(formatPitchPair(parsePitch('D#4'))).toBe('D♯4 / E♭4');
+    expect(formatPitchPair(parsePitch('Eb4'))).toBe('D♯4 / E♭4');
+    expect(formatPitchPair(parsePitch('A#3'))).toBe('A♯3 / B♭3');
+    expect(formatPitchPair(parsePitch('Gb5'))).toBe('F♯5 / G♭5');
+    expect(formatPitchPair(parsePitch('C5'))).toBe('C5');
   });
   it('midi round trip', () => {
     expect(toMidi(parsePitch('C4'))).toBe(60);

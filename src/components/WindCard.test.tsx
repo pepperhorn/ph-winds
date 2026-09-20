@@ -13,7 +13,7 @@ describe('WindCard', () => {
   it('shows heading, subtitle, diagram and staff by default', () => {
     const { container } = render(<WindCard card={newCardDraft(parsePitch('C5'))} meta={meta} />);
     expect(screen.getByText('C5')).toBeInTheDocument();
-    expect(screen.getByText('sounds E♭4')).toBeInTheDocument();
+    expect(screen.getByText('sounds D♯4 / E♭4')).toBeInTheDocument();
     expect(container.querySelector('.wc-fingering svg')).not.toBeNull();
     expect(screen.getByTestId('staff')).toBeInTheDocument();
   });
@@ -45,6 +45,11 @@ describe('WindCard', () => {
     expect(screen.queryByRole('button', { name: 'Play voice' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Play piano' })).toBeNull();
     expect(container.querySelector('.wc-card')).toHaveAttribute('data-export-hide');
+  });
+  it('uses the short instrument name (no parenthetical) for a horn-less instrument', () => {
+    const recorderMeta = createBoard('recorder').meta;
+    render(<WindCard card={newCardDraft(parsePitch('C2'))} meta={recorderMeta} />);
+    expect(screen.getByText('not available on Recorder')).toBeInTheDocument();
   });
   it('an available card carries no data-export-hide attribute', () => {
     const { container } = render(<WindCard card={newCardDraft(parsePitch('C5'))} meta={meta} />);

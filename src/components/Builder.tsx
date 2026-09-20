@@ -18,6 +18,7 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
 }) {
   const set = (p: Partial<BuilderDraft>) => draft && onChange({ ...draft, ...p });
   const options = draft ? fingeringsFor(meta.instrument, meta.horn, toMidi(draft.pitch)) : [];
+  const unavailable = !!draft && options.length === 0;
   const info = getInstrument(meta.instrument);
   const layout = info.layout;
   const semis = semitones(meta.instrument, meta.horn);
@@ -49,9 +50,14 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
           options={[{ value: 'auto', label: 'Auto' }, { value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }]} />
       </div>
       <div className="wc-builder-grid grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-      <div className="wc-builder-preview grid min-h-64 place-items-center rounded-2xl bg-canvas p-4">
+      <div className="wc-builder-preview grid min-h-64 place-items-center gap-2 rounded-2xl bg-canvas p-4">
         {draft
-          ? <WindCard card={draft} meta={meta} onPlay={onPlay} showPlay="always" loadingPlay={loadingPlay} />
+          ? <>
+              <WindCard card={draft} meta={meta} onPlay={onPlay} showPlay="always" loadingPlay={loadingPlay} />
+              {unavailable && (
+                <p className="wc-builder-unavailable-hint text-xs text-muted">Pick another note — this one isn't available on {info.shortName}.</p>
+              )}
+            </>
           : <p className="wc-builder-empty text-sm text-muted">Pick a note on the keyboard below</p>}
       </div>
       <div className="wc-builder-controls space-y-4">
@@ -82,7 +88,7 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
           <TextFieldControls label="Footer" value={draft?.text?.footer ?? {}} base={meta.cardText.footer} onChange={(p) => setText('footer', p)} />
         </div>
         <div className="wc-builder-actions flex items-center gap-3">
-          <Button variant="filled" disabled={!draft} onClick={onCommit} className="btn-add-card">
+          <Button variant="filled" disabled={!draft || unavailable} onClick={onCommit} className="btn-add-card">
             {draft?.editingId ? 'Update card' : 'Add to board'}
           </Button>
           {draft?.editingId && <Button variant="text" onClick={onCancelEdit} className="btn-cancel-edit">Cancel</Button>}
