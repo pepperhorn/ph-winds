@@ -25,7 +25,7 @@ describe('WindCardsApp', () => {
   });
   it('concert mode maps key clicks to written pitch', async () => {
     render(<WindCardsApp />);   // default: alto sax
-    await userEvent.click(screen.getByRole('radio', { name: 'Concert' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Played' }));
     await userEvent.click(screen.getByRole('button', { name: 'E♭4' }));
     expect(within(document.querySelector('.wc-builder-preview')!).getByText('C5')).toBeInTheDocument();
   });

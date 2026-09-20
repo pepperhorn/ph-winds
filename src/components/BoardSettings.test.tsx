@@ -9,7 +9,7 @@ describe('BoardSettings', () => {
     render(<BoardSettings meta={createBoard('saxophone').meta} onMeta={vi.fn()} />);
     expect(screen.queryByLabelText('Instrument')).toBeNull();
     expect(screen.queryByLabelText('Horn')).toBeNull();
-    expect(screen.queryByRole('radio', { name: 'Concert' })).toBeNull();
+    expect(screen.queryByRole('radio', { name: 'Played' })).toBeNull();
   });
   it('toggles variant chips in the Diagram style section', async () => {
     const onMeta = vi.fn();

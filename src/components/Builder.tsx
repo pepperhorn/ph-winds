@@ -69,14 +69,26 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
               {info.horns.map((h) => <option key={h.id} className="wc-horn-option" value={h.id}>{h.name}</option>)}
             </select>
           )}
-          <Segmented label="Pitch" value={meta.pitchMode} onChange={(pitchMode) => onMeta({ pitchMode })}
-            options={[{ value: 'written', label: 'Written' }, { value: 'concert', label: 'Concert' }]} />
-          <Segmented label="Music font" value={meta.musicFont} onChange={(musicFont) => onMeta({ musicFont })}
-            options={[{ value: 'bravura', label: 'Bravura' }, { value: 'petaluma', label: 'Petaluma' }]} />
-          <Segmented label="Diagram" value={meta.diagramOrient} onChange={(diagramOrient) => onMeta({ diagramOrient })}
-            options={[{ value: 'vertical', label: 'Upright' }, { value: 'horizontal', label: 'Sideways' }]} />
-          <Segmented label="Columns" value={String(meta.columns)} onChange={(c) => onMeta({ columns: c === 'auto' ? 'auto' : Number(c) })}
-            options={[{ value: 'auto', label: 'Auto' }, { value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }]} />
+          <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-pitch">
+            <span id="wc-settings-caption-pitch" className="wc-settings-caption text-[11px] text-muted">Written as:</span>
+            <Segmented label="Pitch" value={meta.pitchMode} onChange={(pitchMode) => onMeta({ pitchMode })}
+              options={[{ value: 'written', label: 'Written' }, { value: 'concert', label: 'Played' }]} />
+          </div>
+          <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-font">
+            <span id="wc-settings-caption-font" className="wc-settings-caption text-[11px] text-muted">Notation:</span>
+            <Segmented label="Music font" value={meta.musicFont} onChange={(musicFont) => onMeta({ musicFont })}
+              options={[{ value: 'bravura', label: 'Standard' }, { value: 'petaluma', label: 'Handwritten' }]} />
+          </div>
+          <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-orient">
+            <span id="wc-settings-caption-orient" className="wc-settings-caption text-[11px] text-muted">Orientation:</span>
+            <Segmented label="Diagram" value={meta.diagramOrient} onChange={(diagramOrient) => onMeta({ diagramOrient })}
+              options={[{ value: 'vertical', label: 'Upright' }, { value: 'horizontal', label: 'Sideways' }]} />
+          </div>
+          <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-columns">
+            <span id="wc-settings-caption-columns" className="wc-settings-caption text-[11px] text-muted">Cards per Row:</span>
+            <Segmented label="Columns" value={String(meta.columns)} onChange={(c) => onMeta({ columns: c === 'auto' ? 'auto' : Number(c) })}
+              options={[{ value: 'auto', label: 'Auto' }, { value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }]} />
+          </div>
         </div>
       </div>
       <div className="wc-builder-grid grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">

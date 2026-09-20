@@ -9,20 +9,20 @@ describe('resolve', () => {
   it('auto labels', () => {
     expect(autoHeading(parsePitch('F#4'))).toBe('F♯4 / G♭4');
     expect(autoHeading(parsePitch('C5'))).toBe('C5');
-    expect(autoSubtitle(parsePitch('C5'), -9)).toBe('sounds D♯4 / E♭4');
+    expect(autoSubtitle(parsePitch('C5'), -9)).toBe('played D♯4 / E♭4');
     expect(autoSubtitle(parsePitch('C5'), 0)).toBe('');
-    expect(autoSubtitle(parsePitch('G#4'), -2)).toBe('sounds F♯4 / G♭4');
+    expect(autoSubtitle(parsePitch('G#4'), -2)).toBe('played F♯4 / G♭4');
   });
   it('written accidental gets both spellings sharp-first; a natural sounding pitch does not', () => {
     // alto sax (-9): written C♯5 sounds E4 (natural).
     expect(autoHeading(parsePitch('C#5'))).toBe('C♯5 / D♭5');
-    expect(autoSubtitle(parsePitch('C#5'), -9)).toBe('sounds E4');
+    expect(autoSubtitle(parsePitch('C#5'), -9)).toBe('played E4');
   });
   it('card text falls back to board defaults then auto labels', () => {
     const b = alto();
     const t = resolveCardText({ pitch: parsePitch('C5') }, b.meta);
     expect(t.heading.text).toBe('C5');
-    expect(t.subtitle.text).toBe('sounds D♯4 / E♭4');
+    expect(t.subtitle.text).toBe('played D♯4 / E♭4');
     expect(t.subtitle.show).toBe(true);
     expect(t.footer.show).toBe(false);
   });

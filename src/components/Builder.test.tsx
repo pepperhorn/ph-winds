@@ -53,9 +53,9 @@ describe('Builder', () => {
     const saxMeta = createBoard('saxophone').meta;
     render(<Builder draft={null} meta={saxMeta} onChange={vi.fn()} onCommit={vi.fn()} onCancelEdit={vi.fn()} onPlay={vi.fn()} onMeta={onMeta} onInstrument={vi.fn()} />);
     expect(screen.getByLabelText('Horn')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('radio', { name: 'Concert' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Played' }));
     expect(onMeta).toHaveBeenCalledWith({ pitchMode: 'concert' });
-    await userEvent.click(screen.getByRole('radio', { name: 'Petaluma' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Handwritten' }));
     expect(onMeta).toHaveBeenCalledWith({ musicFont: 'petaluma' });
     await userEvent.click(screen.getByRole('radio', { name: 'Sideways' }));
     expect(onMeta).toHaveBeenCalledWith({ diagramOrient: 'horizontal' });
