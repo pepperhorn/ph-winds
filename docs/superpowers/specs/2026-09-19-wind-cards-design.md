@@ -63,13 +63,14 @@ src/
     StaffNote.tsx               single written note → SVG via Verovio
   components/
     AppBar.tsx
-    Builder.tsx                 preview + controls
+    Builder.tsx                 instrument/horn/pitch/font/diagram/columns strip, preview + controls, embedded piano panel
+    instrumentIcons.ts          instrument id → bundled icon asset
     BoardSettings.tsx
     DiagramStyleControls.tsx
     TextFieldControls.tsx       heading/subtitle/footer editors
     Board.tsx                   grid, drag reorder, card toolbar
-    WindCard.tsx                one card (used by preview and board)
-    PianoDrawer.tsx             fixed bottom drawer
+    WindCard.tsx                one card (used by preview and board); renders the unavailable/grey state
+    PianoPanel.tsx               collapsible panel embedded at the bottom of the Builder card (was a fixed bottom drawer)
     PianoKeyboard.tsx           SVG keyboard with range bands
   audio/
     playback.ts                 smplr Soundfont loader + playNote(voice, midi)
@@ -133,8 +134,9 @@ interface BoardState { version: 1; meta: BoardMeta; items: CardItem[] }
 
 Rules:
 - Optional fields mean "use the default", so stored JSON never needs migration for additive changes. `version` bumps only on breaking changes.
-- Card text resolves field by field: card override → board `cardText` default. Empty heading text falls back to the auto label (e.g. `F♯4`). Empty subtitle falls back to `sounds E4` when the instrument transposes, otherwise hidden.
-- Instrument (and horn) is locked while the board has cards; changing it asks to clear the board.
+- Card text resolves field by field: card override → board `cardText` default. Empty heading text falls back to the auto label. For an accidental, the auto label pairs both enharmonic spellings sharp-first, e.g. `F♯4 / G♭4`; a natural pitch (including an enharmonic-natural spelling like `C♭4`) is unchanged, e.g. `C4` or `C♭4`. Empty subtitle falls back to `sounds E4` when the instrument transposes, otherwise hidden.
+- Switching instrument or horn never clears the board or asks for confirmation. Every card **keeps its sounding (concert) pitch**: the reducer computes the semitone delta between the old and new instrument/horn, applies it to each card's written midi, and re-spells the result from the target instrument's own fingering chart (falling back to chromatic respelling when the target chart has no fingering at that midi). Each remapped card's `fingeringIndex` resets to `0` (primary fingering). Diagram-style `variants` reset to the default set only when the *instrument* id actually changes — a horn-only switch (e.g. alto sax → tenor sax) keeps the user's chosen variants, since variant names are layout-scoped, not horn-scoped.
+- A card whose remapped pitch has no fingering on the current instrument/horn becomes an **unavailable** card (see "Card anatomy" below) rather than being dropped or blocking the switch. Switching to an instrument where nothing on the board fits yields an all-grey board.
 - Pitch mode only affects the piano labels and selection mapping. Notation on cards is **always written pitch**.
 
 ## Part 3 — music logic
@@ -142,8 +144,9 @@ Rules:
 - `pitch.ts`: parse `"F#4"`/`"Bb3"`, format with ♯/♭ for display, `toMidi`, `fromMidi(midi, preferFlat)`, `writtenToConcert(p, semis)`, `concertToWritten(p, semis)`. Semitones come from `transposeFor(layout, horn)` in fingering-components (negative = sounds lower).
 - Spelling: the written pitch is taken from the fingering file's own spelling when a fingering exists at that midi number; otherwise sharps above the key, flats for B♭/E♭/A♭ by convention.
 - `instruments.ts`:
-  - `listInstruments()` → id, name, horns.
+  - `listInstruments()` → id, name, `shortName` (compact display name for the icon picker and "not available on …" text — e.g. "Tin whistle" vs. the full `name`'s parentheticals), horns.
   - `fingeringsFor(instrument, horn, midi)` → all fingerings whose written pitch matches, primary first. Saxophone merges the altissimo file. Tin whistle picks the fingering file for the chosen horn (`tin-whistle-d.json`, etc.).
+  - `hasFingering(instrument, horn, midi)` → shared predicate (`fingeringsFor(...).length > 0`) used by both the card renderer and the board grid to decide whether a card is available, so the "no fingering" check only ever lives in one place.
   - `rangeBands(instrument, horn)` → `{ beginner, intermediate, pro }` as midi spans (written).
 
 ## Part 4 — UI
@@ -151,23 +154,25 @@ Rules:
 Single column, max width ~1200px, order top to bottom:
 
 1. **App bar** — wordmark "ph-winds", buttons: New, Import JSON, Export JSON, PNG, PDF.
-2. **Builder card**
-   - Left: live `WindCard` preview of the pending card.
-   - Right: display (Fingering / Both / Notation) and orientation (Vertical / Horizontal) as segmented buttons; scale slider 50–200% (step 10); fingering alternates as small clickable thumbnails (primary first, selected one glows); heading/subtitle/footer overrides via `TextFieldControls` (text, show, S/M/L, align).
-   - Primary action "Add to board". When editing an existing card, the button reads "Update card" with a "Cancel" link.
+2. **Builder card** — holds the settings strip, the pending-card preview/controls, and the embedded piano panel:
+   - **Settings strip** (`role="group" aria-label="Board settings"`): instrument icon picker (see below), horn select next to it, then Written / Concert toggle, Bravura / Petaluma, diagram orientation (upright / sideways, board-wide), columns (auto, 1–4) as segmented controls.
+     - **Instrument icon picker** replaces the old instrument `<select>`: a `role="radiogroup" aria-label="Instrument"` row of ~44px rounded-xl icon buttons (`role="radio"`, one per `listInstruments()` entry, in that order), each a black silhouette PNG (`src/icons/*.png`, mapped in `instrumentIcons.ts`) left un-tinted. Unselected icons are muted (`opacity-50 grayscale`, brightening on hover); the selected icon is full-opacity with an accent-soft background, accent ring and glow. Each button's accessible name is the instrument's full name (e.g. "Flute (Boehm, C foot)"); the `<img>` itself is decorative (`alt=""`). Wraps to a second row on narrow viewports (~390px). The horn `<select>` is unaffected by this change.
+   - **Preview** — live `WindCard` preview of the pending card, with the unavailable hint below it when the picked note has no fingering on the current instrument/horn (see "Card anatomy").
+   - **Controls** — display (Fingering / Both / Notation) and orientation (Vertical / Horizontal) as segmented buttons; scale slider 50–200% (step 10); fingering alternates as small clickable thumbnails (primary first, selected one glows); heading/subtitle/footer overrides via `TextFieldControls` (text, show, S/M/L, align).
+   - Primary action "Add to board" (`aria-describedby` pointing at the unavailable hint when disabled for that reason). When editing an existing card, the button reads "Update card" with a "Cancel" link.
    - With no note selected, the preview shows a hint: "Pick a note on the keyboard below".
-3. **Board settings** (collapsible sections as chips):
-   - Instrument + horn select; Written / Concert toggle; Bravura / Petaluma; columns (auto, 1–4).
-   - Diagram orientation (upright / sideways), board-wide.
-   - Board title/subtitle/footer and card text defaults.
+   - **Piano panel** — embedded at the bottom of the Builder card, in normal page flow (not a fixed overlay); see item 5 below.
+3. **Board settings** (collapsible sections as chips) — now scoped to purely visual/text defaults, since instrument/horn/pitch/font/diagram-orientation/columns moved into the Builder card's settings strip (item 2):
    - **Diagram style**: variant chips (multi-select, from the instrument's `variants`), look (Solid / Dotted / Ghost), two-tone hands, hints, primary + secondary colour (preset swatches plus custom picker).
-4. **Board** — title and subtitle above the grid, footer below, editable in place. Grid of `WindCard`s honouring each card's scale/orientation. Drag-handle reorder (native HTML5 DnD, chordl style). Hover toolbar: edit (loads into builder), duplicate, delete. Empty state explains adding the first card.
-5. **Piano drawer** — `position: fixed` at the bottom of the viewport, full width, with a handle tab to show/hide (state kept in localStorage; page gets bottom padding while open).
+   - **Text**: board title/subtitle/footer and card text defaults.
+4. **Board** — title and subtitle above the grid, footer below, editable in place. Grid of `WindCard`s honouring each card's scale/orientation. Drag-handle reorder (native HTML5 DnD, chordl style). Hover toolbar: edit (loads into builder), duplicate, delete. Empty state explains adding the first card. A card with no fingering on the current instrument/horn renders greyed out (see "Card anatomy") and is excluded from PNG/PDF export, including the grid wrapper around it, so it leaves neither a gap (auto columns) nor a blank cell (fixed columns).
+5. **Piano panel** — embedded as the bottom section of the Builder card (item 2), spanning its full width, in normal page flow (no longer a `position: fixed` bottom drawer). A header row (legend, "Sound on click" + voice select, and the show/hide toggle) is always visible; the show/hide toggle ("Hide keyboard ▾" / "Show keyboard ▴", state kept in localStorage) collapses/expands the keyboard itself below that row — no page bottom-padding compensation is needed since the panel no longer floats over content.
    - Spans the pro range plus 2 semitones margin each side, snapped to whole octaves' white keys.
    - Range bands drawn behind/under keys in soft tints: beginner mint, intermediate sky, pro lavender; legend at the left.
    - Keys outside pro range, or with no fingering, are dimmed and disabled.
    - Clicking selects the note; the selected key glows in the accent.
    - Labels follow pitch mode: in concert mode keys are concert pitch and clicking converts to written for the card.
+   - Sized to the Builder card's own width (a `ResizeObserver` on the panel, not the viewport), with horizontal scroll for overflow.
 
 ### Card anatomy
 
@@ -176,6 +181,7 @@ Single column, max width ~1200px, order top to bottom:
 - `display` hides the diagram or the staff.
 - `scale` multiplies a base width for both diagram and staff.
 - Text sizes: S/M/L map to 12/14/18px (heading), 11/12/14px (subtitle/footer).
+- **Unavailable state** (derived, never stored): when `hasFingering(instrument, horn, writtenMidi)` is false for a card's remapped pitch, `WindCard` renders a greyed-out placeholder instead of the normal diagram/staff layout — no fingering diagram, no staff, no play buttons. It shows the pitch (via `formatPitchPair`, so an unavailable accidental still gets its sharp/flat pairing) and, if the user set their own heading text for that card, that heading text; otherwise the "not available on …" line. The card and its board-grid wrapper both carry `data-export-hide`, so an unavailable card is skipped entirely by PNG/PDF export (no gap, no blank cell) but is kept as normal in the saved/exported JSON — it's a render-time, not a data, concept. In the Builder, an unavailable draft shows the same greyed preview and disables "Add to board" with the "Pick another note…" hint.
 
 ### Rendering
 
@@ -234,6 +240,6 @@ Single column, max width ~1200px, order top to bottom:
 3. Music logic (`pitch.ts`, `instruments.ts`) with tests.
 4. State, storage, JSON io with tests.
 5. Verovio loader + `StaffNote`.
-6. `WindCard`, then Builder, BoardSettings, Board, PianoDrawer.
+6. `WindCard`, then Builder, BoardSettings, Board, PianoPanel.
 7. smplr playback.
 8. Export, Playwright smoke, deploy config.
