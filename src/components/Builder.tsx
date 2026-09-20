@@ -7,7 +7,7 @@ import { resolveStyle } from '@/state/resolve';
 import { WindCard } from './WindCard';
 import { FingeringView } from './FingeringView';
 import { TextFieldControls } from './TextFieldControls';
-import { Button, Segmented, Slider } from './ui';
+import { Button, onRovingKeyDown, rovingTabIndex, Segmented, Slider } from './ui';
 import { INSTRUMENT_ICONS } from './instrumentIcons';
 
 export interface BuilderDraft extends CardDraft { editingId?: string }
@@ -31,11 +31,14 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
   const layout = info.layout;
   const semis = semitones(meta.instrument, meta.horn);
   const setText = (k: TextKey, p: object) => draft && set({ text: { ...draft.text, [k]: { ...draft.text?.[k], ...p } } });
+  const instrumentIds = listInstruments().map((i) => i.id);
 
   return (
     <section className="wc-builder space-y-6 rounded-3xl border border-hairline bg-surface/80 p-6 shadow-glow backdrop-blur">
       <div className="wc-builder-settings-main flex flex-col gap-3 rounded-2xl border border-hairline bg-canvas p-4"
         role="group" aria-label="Board settings">
+        <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-instrument">
+          <span id="wc-settings-caption-instrument" className="wc-settings-caption text-[11px] text-muted">Instrument:</span>
         <div role="radiogroup" aria-label="Instrument" className="wc-instrument-picker flex flex-wrap gap-2">
           {listInstruments().map((i) => {
             const selected = meta.instrument === i.id;
@@ -45,12 +48,14 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
             const thin = THIN_SILHOUETTES.has(i.id);
             return (
               <button key={i.id} type="button" role="radio" aria-checked={selected} aria-label={i.name} title={i.name}
+                tabIndex={rovingTabIndex(i.id, instrumentIds, meta.instrument as InstrumentId)}
                 onClick={() => onInstrument(i.id)}
-                className={`wc-instrument-icon btn-instrument-icon group flex w-18 flex-col items-center gap-1 rounded-2xl p-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                onKeyDown={onRovingKeyDown(instrumentIds, meta.instrument as InstrumentId, (id) => onInstrument(id))}
+                className={`wc-instrument-icon btn-instrument-icon group flex w-18 flex-col items-center gap-1 rounded-2xl p-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                   selected ? 'bg-accent-soft ring-2 ring-accent shadow-glow' : 'hover:bg-surface'
                 }`}>
                 <span className="wc-instrument-icon-tile flex size-16 items-center justify-center overflow-hidden">
-                  <img src={INSTRUMENT_ICONS[i.id]} alt=""
+                  <img src={INSTRUMENT_ICONS[i.id].src} width={INSTRUMENT_ICONS[i.id].width} height={INSTRUMENT_ICONS[i.id].height} alt=""
                     className={`wc-instrument-icon-img h-full w-full object-contain p-1 transition ${thin ? 'rotate-45' : ''} ${
                       selected ? 'opacity-100' : 'opacity-50 grayscale group-hover:opacity-80'
                     }`} />
@@ -62,31 +67,35 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
             );
           })}
         </div>
+        </div>
         <div className="wc-builder-settings-row flex flex-wrap items-center gap-3">
           {info.horns.length > 0 && (
-            <select aria-label="Horn" value={meta.horn ?? ''} onChange={(e) => onInstrument(meta.instrument, e.target.value)}
-              className="wc-horn-select rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm">
-              {info.horns.map((h) => <option key={h.id} className="wc-horn-option" value={h.id}>{h.name}</option>)}
-            </select>
+            <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-horn">
+              <span id="wc-settings-caption-horn" className="wc-settings-caption text-[11px] text-muted">Horn:</span>
+              <select aria-label="Horn" value={meta.horn ?? ''} onChange={(e) => onInstrument(meta.instrument, e.target.value)}
+                className="wc-horn-select rounded-lg border border-hairline bg-surface px-2 py-1.5 text-sm">
+                {info.horns.map((h) => <option key={h.id} className="wc-horn-option" value={h.id}>{h.name}</option>)}
+              </select>
+            </div>
           )}
           <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-pitch">
             <span id="wc-settings-caption-pitch" className="wc-settings-caption text-[11px] text-muted">Written as:</span>
-            <Segmented label="Pitch" value={meta.pitchMode} onChange={(pitchMode) => onMeta({ pitchMode })}
+            <Segmented label="Written as:" value={meta.pitchMode} onChange={(pitchMode) => onMeta({ pitchMode })}
               options={[{ value: 'written', label: 'Played' }, { value: 'concert', label: 'Concert Pitch (Piano)' }]} />
           </div>
           <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-font">
             <span id="wc-settings-caption-font" className="wc-settings-caption text-[11px] text-muted">Notation:</span>
-            <Segmented label="Music font" value={meta.musicFont} onChange={(musicFont) => onMeta({ musicFont })}
+            <Segmented label="Notation:" value={meta.musicFont} onChange={(musicFont) => onMeta({ musicFont })}
               options={[{ value: 'bravura', label: 'Standard' }, { value: 'petaluma', label: 'Handwritten' }]} />
           </div>
           <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-orient">
             <span id="wc-settings-caption-orient" className="wc-settings-caption text-[11px] text-muted">Orientation:</span>
-            <Segmented label="Diagram" value={meta.diagramOrient} onChange={(diagramOrient) => onMeta({ diagramOrient })}
+            <Segmented label="Orientation:" value={meta.diagramOrient} onChange={(diagramOrient) => onMeta({ diagramOrient })}
               options={[{ value: 'vertical', label: 'Upright' }, { value: 'horizontal', label: 'Sideways' }]} />
           </div>
           <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-columns">
             <span id="wc-settings-caption-columns" className="wc-settings-caption text-[11px] text-muted">Cards per Row:</span>
-            <Segmented label="Columns" value={String(meta.columns)} onChange={(c) => onMeta({ columns: c === 'auto' ? 'auto' : Number(c) })}
+            <Segmented label="Cards per Row:" value={String(meta.columns)} onChange={(c) => onMeta({ columns: c === 'auto' ? 'auto' : Number(c) })}
               options={[{ value: 'auto', label: 'Auto' }, { value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }]} />
           </div>
         </div>
@@ -113,13 +122,19 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
           format={(v) => `${Math.round(v * 100)}%`} />
         {options.length > 1 && (
           <div role="radiogroup" aria-label="Fingerings" className="wc-alternates flex flex-wrap gap-2">
-            {options.map((f, i) => (
-              <button key={i} type="button" role="radio" aria-checked={draft?.fingeringIndex === i} aria-label={`Fingering ${i + 1}`}
+            {options.map((f, i) => {
+              const indices = options.map((_, j) => j);
+              const current = draft?.fingeringIndex ?? 0;
+              return (
+              <button key={i} type="button" role="radio" aria-checked={current === i} aria-label={`Fingering ${i + 1}`}
+                tabIndex={rovingTabIndex(i, indices, current)}
                 onClick={() => set({ fingeringIndex: i })}
-                className={`wc-alternate btn-alternate rounded-xl border p-1.5 transition ${draft?.fingeringIndex === i ? 'border-accent shadow-glow-strong' : 'border-hairline hover:shadow-glow'}`}>
+                onKeyDown={onRovingKeyDown(indices, current, (idx) => set({ fingeringIndex: idx }))}
+                className={`wc-alternate btn-alternate rounded-xl border p-1.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${current === i ? 'border-accent shadow-glow-strong' : 'border-hairline hover:shadow-glow'}`}>
                 <FingeringView layout={layout} fingering={f} style={resolveStyle(draft ?? {}, meta)} orient={meta.diagramOrient} width={44} />
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
         <div className="wc-builder-text space-y-2">

@@ -1,11 +1,56 @@
-import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useState, type ButtonHTMLAttributes, type KeyboardEvent, type ReactNode } from 'react';
+
+/**
+ * Roving-tabindex keyboard navigation, shared by every `role="radiogroup"`
+ * of `role="radio"` buttons in the app (the `Segmented` control below, the
+ * instrument icon picker, the fingering-alternates thumbnails): only the
+ * selected radio is a tab stop (`tabIndex=0`, everyone else `-1`); Left/Up
+ * and Right/Down move (and select) the previous/next option, wrapping at the
+ * ends; Home/End jump to the first/last. Movement selects immediately
+ * (single-select radiogroup convention), and focus follows the selection so
+ * repeated arrow presses keep working without an extra Tab.
+ *
+ * Attach `rovingTabIndex(value, values, current)` to each radio's
+ * `tabIndex`, and `onRovingKeyDown(values, current, onChange)` to each
+ * radio's `onKeyDown`.
+ */
+export function rovingTabIndex<T>(value: T, values: T[], current: T): 0 | -1 {
+  // Fall back to making the first option a tab stop if nothing matches
+  // `current` (e.g. a value not present in `values`), so the group is never
+  // entirely untabbable.
+  const hasCurrent = values.includes(current);
+  if (hasCurrent) return value === current ? 0 : -1;
+  return value === values[0] ? 0 : -1;
+}
+
+export function onRovingKeyDown<T>(values: T[], current: T, onChange: (v: T) => void) {
+  return (e: KeyboardEvent<HTMLElement>) => {
+    const idx = Math.max(values.indexOf(current), 0);
+    let next: number;
+    switch (e.key) {
+      case 'ArrowLeft': case 'ArrowUp': next = (idx - 1 + values.length) % values.length; break;
+      case 'ArrowRight': case 'ArrowDown': next = (idx + 1) % values.length; break;
+      case 'Home': next = 0; break;
+      case 'End': next = values.length - 1; break;
+      default: return;
+    }
+    e.preventDefault();
+    onChange(values[next]);
+    const group = (e.currentTarget as HTMLElement).closest('[role="radiogroup"]');
+    const radios = group?.querySelectorAll<HTMLElement>('[role="radio"]');
+    radios?.[next]?.focus();
+  };
+}
 
 export function Segmented<T extends string>({ value, options, onChange, className = '', label }:
   { value: T; options: { value: T; label: ReactNode; ariaLabel?: string }[]; onChange(v: T): void; className?: string; label?: string }) {
+  const values = options.map((o) => o.value);
   return (
     <div role="radiogroup" aria-label={label} className={`wc-segmented inline-flex rounded-full border border-hairline bg-canvas p-0.5 ${className}`}>
       {options.map((o) => (
-        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} aria-label={o.ariaLabel} onClick={() => onChange(o.value)}
+        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} aria-label={o.ariaLabel}
+          tabIndex={rovingTabIndex(o.value, values, value)}
+          onClick={() => onChange(o.value)} onKeyDown={onRovingKeyDown(values, value, onChange)}
           className={`wc-segmented-option btn-segmented-option flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium transition ${value === o.value ? 'bg-surface text-accent shadow-glow' : 'text-muted hover:text-ink'}`}>
           {o.label}
         </button>
