@@ -10,8 +10,11 @@ export function PianoPanel({ open, onToggle, soundOnClick, onSoundOnClick, sound
     <section className="wc-piano-panel rounded-2xl border border-hairline bg-canvas p-4">
       <div className="wc-piano-toolbar flex flex-wrap items-center gap-4 text-xs text-muted">
         <button type="button" onClick={onToggle} aria-expanded={open}
-          className="btn-piano-toggle rounded-full border border-hairline bg-surface px-4 py-1.5 text-sm font-medium text-ink shadow-glow">
-          {open ? 'Hide keyboard ▾' : 'Show keyboard ▴'}
+          className="wc-piano-toggle btn-piano-toggle rounded-full border border-hairline bg-surface px-4 py-1.5 text-sm font-medium text-ink shadow-glow">
+          {/* In-flow panel: expanding reveals the keyboard below, so the
+              closed state points down (there's more to show below) and the
+              open state points up (collapsing pulls content back up). */}
+          {open ? 'Hide keyboard ▴' : 'Show keyboard ▾'}
         </button>
         <span className="wc-piano-legend flex items-center gap-3">
           <i className="wc-legend-swatch inline-block size-3 rounded bg-band-beginner" /> Beginner

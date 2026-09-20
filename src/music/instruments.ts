@@ -47,8 +47,9 @@ const CATALOGUE: { layout: Layout; clef: 'G' | 'F'; sheets: Sheets }[] = [
 ];
 
 /** Short display name per instrument, for compact UI like the "not available
- * on …" line — the full `name` (which may carry parentheticals such as
- * "Recorder (baroque fingering)") stays in the instrument `<select>`. */
+ * on …" line and the icon-picker caption — the full `name` (which may carry
+ * parentheticals such as "Recorder (baroque fingering)") is used as each
+ * icon-picker button's accessible name instead. */
 const SHORT_NAMES: Record<InstrumentId, string> = {
   saxophone: 'Saxophone',
   clarinet: 'Clarinet',

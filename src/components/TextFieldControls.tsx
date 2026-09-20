@@ -15,7 +15,7 @@ function AlignIcon({ align }: { align: 'left' | 'center' | 'right' }) {
       strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" focusable="false">
       {bars.map(([x1, x2], i) => {
         const y = 4 + i * 4;
-        return <line key={y} x1={x1} y1={y} x2={x2} y2={y} />;
+        return <line key={y} className="wc-align-icon-bar" x1={x1} y1={y} x2={x2} y2={y} />;
       })}
     </svg>
   );

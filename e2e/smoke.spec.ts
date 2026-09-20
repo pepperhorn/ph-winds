@@ -28,6 +28,8 @@ test('build a card, persist it, render Handwritten font, play without errors', a
 
   await page.locator('#wc-board-export .wc-card').hover();
   await page.getByRole('button', { name: 'Play voice' }).first().click();
-  await expect(page.getByRole('status')).toHaveText(/Could not load that sound/);   // network blocked → graceful toast
+  // Scoped to `.wc-toast`: `getByRole('status')` alone is ambiguous with the
+  // per-staff notation-loading region (`role="status"` on `.wc-staff-loading`).
+  await expect(page.locator('.wc-toast')).toHaveText(/Could not load that sound/);   // network blocked → graceful toast
   expect(errors).toEqual([]);
 });

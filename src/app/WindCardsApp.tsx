@@ -119,7 +119,7 @@ function WindCardsApp() {
       <AppBar onNew={onNew} onImport={onImport} onAbout={() => setAbout(true)}
         onExportJson={() => downloadText(exportBoardJson(state), `${meta.title.text || 'ph-winds-board'}.json`, 'application/json')}
         onExportPng={() => exportImage('png')} onExportPdf={() => exportImage('pdf')} />
-      <main className="wc-main mx-auto max-w-[1200px] space-y-6 px-6">
+      <main className="wc-main mx-auto max-w-[1200px] space-y-6 px-6 pb-10">
         <Builder draft={draft} meta={meta} onChange={setDraft} onCommit={commit} onCancelEdit={() => setDraft(null)}
           onPlay={(w) => draft && play(draft.pitch, w, 'draft')}
           loadingPlay={loading?.key === 'draft' ? loading.which : undefined}
