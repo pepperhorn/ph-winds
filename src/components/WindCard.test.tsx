@@ -46,6 +46,19 @@ describe('WindCard', () => {
     expect(screen.queryByRole('button', { name: 'Play piano' })).toBeNull();
     expect(container.querySelector('.wc-card')).toHaveAttribute('data-export-hide');
   });
+  it('shows both enharmonic spellings for an unavailable accidental pitch', () => {
+    const { container } = render(<WindCard card={newCardDraft(parsePitch('C#1'))} meta={meta} />);
+    expect(container.querySelector('.wc-card--unavailable')).not.toBeNull();
+    expect(screen.getByText('D♭1 / C♯1')).toBeInTheDocument();
+    expect(screen.getByText('not available on E♭ alto Saxophone')).toBeInTheDocument();
+  });
+  it('shows the user\'s own heading override instead of the pitch pair when set, keeping the "not available" line underneath', () => {
+    const draft = { ...newCardDraft(parsePitch('C2')), text: { heading: { text: 'My low C' } } };
+    render(<WindCard card={draft} meta={meta} />);
+    expect(screen.getByText('My low C')).toBeInTheDocument();
+    expect(screen.queryByText('C2')).toBeNull();
+    expect(screen.getByText('not available on E♭ alto Saxophone')).toBeInTheDocument();
+  });
   it('uses the short instrument name (no parenthetical) for a horn-less instrument', () => {
     const recorderMeta = createBoard('recorder').meta;
     render(<WindCard card={newCardDraft(parsePitch('C2'))} meta={recorderMeta} />);

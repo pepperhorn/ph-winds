@@ -1,7 +1,7 @@
 import type { BoardMeta, CardItem, TextField } from '@/state/types';
 import { resolveCardText, resolveStyle } from '@/state/resolve';
-import { fingeringsFor, hasFingering, getInstrument, type InstrumentInfo } from '@/music/instruments';
-import { formatPitch, toMidi } from '@/music/pitch';
+import { fingeringsFor, getInstrument, type InstrumentInfo } from '@/music/instruments';
+import { formatPitchPair, toMidi } from '@/music/pitch';
 import { StaffNote } from '@/notation/StaffNote';
 import { FingeringView } from './FingeringView';
 
@@ -36,13 +36,18 @@ export interface WindCardProps {
 export function WindCard({ card, meta, onPlay, showPlay = 'hover', loadingPlay, className = '' }: WindCardProps) {
   const info = getInstrument(meta.instrument);
   const options = fingeringsFor(meta.instrument, meta.horn, toMidi(card.pitch));
-  const unavailable = !hasFingering(meta.instrument, meta.horn, toMidi(card.pitch));
+  const unavailable = options.length === 0;
 
   if (unavailable) {
+    // Same enharmonic pairing every live card gets (formatPitchPair), and the
+    // user's own heading override when they set one — falling back to the
+    // pitch pair otherwise — with the "not available on …" line always
+    // underneath, never in its place.
+    const heading = card.text?.heading?.text || formatPitchPair(card.pitch);
     return (
       <div data-orientation={card.orientation} data-display={card.display} data-export-hide
         className={`wc-card wc-card--unavailable relative flex flex-col items-center gap-1.5 rounded-2xl border border-hairline bg-surface p-4 opacity-[0.55] ${className}`}>
-        <div className="wc-card-unavailable-note text-sm font-semibold text-ink">{formatPitch(card.pitch)}</div>
+        <div className="wc-card-unavailable-note text-sm font-semibold text-ink">{heading}</div>
         <div className="wc-card-unavailable-text text-xs text-muted">not available on {unavailableLabel(info, meta.horn)}</div>
       </div>
     );
