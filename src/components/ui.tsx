@@ -1,12 +1,12 @@
 import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
 export function Segmented<T extends string>({ value, options, onChange, className = '', label }:
-  { value: T; options: { value: T; label: string }[]; onChange(v: T): void; className?: string; label?: string }) {
+  { value: T; options: { value: T; label: ReactNode; ariaLabel?: string }[]; onChange(v: T): void; className?: string; label?: string }) {
   return (
     <div role="radiogroup" aria-label={label} className={`wc-segmented inline-flex rounded-full border border-hairline bg-canvas p-0.5 ${className}`}>
       {options.map((o) => (
-        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)}
-          className={`wc-segmented-option btn-segmented-option rounded-full px-3 py-1 text-xs font-medium transition ${value === o.value ? 'bg-surface text-accent shadow-glow' : 'text-muted hover:text-ink'}`}>
+        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} aria-label={o.ariaLabel} onClick={() => onChange(o.value)}
+          className={`wc-segmented-option btn-segmented-option flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium transition ${value === o.value ? 'bg-surface text-accent shadow-glow' : 'text-muted hover:text-ink'}`}>
           {o.label}
         </button>
       ))}
