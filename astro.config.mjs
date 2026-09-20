@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   output: 'static',
+  devToolbar: { enabled: false },
   integrations: [react()],
   server: { host: '0.0.0.0' },
   vite: {
