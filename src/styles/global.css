@@ -1,0 +1,31 @@
+@import "tailwindcss";
+@import "@fontsource/poppins/400.css";
+@import "@fontsource/poppins/500.css";
+@import "@fontsource/poppins/600.css";
+@import "@fontsource/poppins/700.css";
+
+@theme {
+  --font-sans: "Poppins", system-ui, sans-serif;
+  --color-accent: #6d5dfc;
+  --color-accent-soft: #ece9ff;
+  --color-surface: #ffffff;
+  --color-canvas: #f7f9fc;
+  --color-ink: #1c2233;
+  --color-muted: #667085;
+  --color-hairline: #e6e9f2;
+  --color-band-beginner: #d9f5e8;
+  --color-band-intermediate: #dbeafe;
+  --color-band-pro: #ede4ff;
+  --shadow-glow: 0 1px 2px rgb(28 34 51 / .06), 0 8px 24px -8px rgb(109 93 252 / .25);
+  --shadow-glow-strong: 0 2px 4px rgb(28 34 51 / .08), 0 12px 32px -6px rgb(109 93 252 / .45);
+}
+
+html { background: var(--color-canvas); color: var(--color-ink); }
+body {
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  background:
+    radial-gradient(60rem 40rem at 10% -10%, #efeaff 0%, transparent 60%),
+    radial-gradient(50rem 36rem at 110% 10%, #e3f1ff 0%, transparent 55%),
+    var(--color-canvas);
+}

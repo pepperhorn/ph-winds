@@ -1,0 +1,242 @@
+// Verovio toolkit loader + font registration.
+//
+// Verovio ships as a ~7 MB WASM module, so it is dynamically imported and the
+// toolkit instance is cached behind a single promise. The bundled Bravura /
+// Petaluma zips (see fonts/verovio + verovio-fonts.generated.ts) are registered
+// via `fontAddCustom` the first time the toolkit initializes, so engraving uses
+// the repo-bundled fonts rather than whatever the Verovio build compiled in.
+
+export type VerovioFont = "Bravura" | "Petaluma";
+
+// Minimal shape of the bits of the Verovio toolkit we use.
+interface Toolkit {
+  setOptions(opts: Record<string, unknown>): void;
+  loadData(data: string): boolean;
+  renderToSVG(page: number): string;
+  getPageCount(): number;
+}
+
+let toolkitPromise: Promise<Toolkit> | null = null;
+// Set once the cached attempt has actually resolved, and never cleared: the
+// toolkit is a module-level singleton, so "has Verovio finished loading?" is
+// answerable synchronously from here. `isVerovioReady` below is the only
+// reader; it exists so a caller can tell a genuine download from a queue.
+let toolkitReady = false;
+
+async function initToolkit(): Promise<Toolkit> {
+  // `verovio/wasm` is the WASM module factory; `verovio/esm` the JS toolkit.
+  // The embedded font zips (~1 MB base64) are dynamically imported here too so
+  // they land in this lazy chunk rather than the main bundle.
+  const [{ default: createVerovioModule }, { VerovioToolkit }, { VEROVIO_FONT_ZIPS }] =
+    await Promise.all([
+      import("verovio/wasm"),
+      import("verovio/esm"),
+      import("./verovio-fonts.generated"),
+    ]);
+  const mod = await createVerovioModule();
+  const tk = new VerovioToolkit(mod) as unknown as Toolkit;
+  // Register the bundled font zips (base64). Loading all keeps font switching
+  // instant afterwards — no re-init when the user toggles Bravura/Petaluma.
+  tk.setOptions({
+    fontAddCustom: Object.values(VEROVIO_FONT_ZIPS),
+  });
+  return tk;
+}
+
+/** Lazily load (and cache) the Verovio toolkit with the bundled fonts registered. */
+export function getVerovioToolkit(): Promise<Toolkit> {
+  if (!toolkitPromise) {
+    toolkitPromise = initToolkit().then(
+      (tk) => {
+        toolkitReady = true;
+        return tk;
+      },
+      (err) => {
+        // Reset so a later call can retry after a transient import/WASM failure.
+        toolkitPromise = null;
+        throw err;
+      },
+    );
+  }
+  return toolkitPromise;
+}
+
+/**
+ * Whether the toolkit is loaded *right now* — synchronous, side-effect free,
+ * and false while an attempt is still in flight.
+ *
+ * Engraving is serialized through this one toolkit on the main thread, so a
+ * board of twenty staff cards queues twenty ~100 ms engravings: the last cards
+ * wait seconds with nothing whatsoever left to download. Anything that wants to
+ * say "still downloading" has to ask this rather than time the wait.
+ */
+export function isVerovioReady(): boolean {
+  return toolkitReady;
+}
+
+/**
+ * Start loading the toolkit without waiting for it.
+ *
+ * Nothing pulls in the ~7 MB Verovio chunk until a staff first mounts, so a
+ * cold visitor who switches to notation view pays the whole download inside the
+ * first engraving — 13 s on a deployed cold cache, which reads as a hung
+ * loading animation. Calling this once after first paint moves that download
+ * off the critical path, so the first staff paints from an already-warm
+ * toolkit.
+ *
+ * Idempotent: it shares `getVerovioToolkit`'s cached promise, so it never
+ * starts a second initialisation and never changes what a later real render
+ * gets. Its rejection is swallowed — a background warm-up has no caller to
+ * catch it, and `getVerovioToolkit` already drops its cached promise on
+ * failure, so a later render still retries from scratch.
+ */
+export function prefetchVerovio(): Promise<void> {
+  return getVerovioToolkit().then(
+    () => undefined,
+    () => undefined,
+  );
+}
+
+/** The slice of the Network Information API we consult. Absent in Safari and
+ *  Firefox, so every field here is optional and absence means "no objection". */
+interface NetworkInformation {
+  saveData?: boolean;
+  effectiveType?: string;
+}
+
+/**
+ * Whether an *unrequested* background download is appropriate on this
+ * connection.
+ *
+ * Verovio is ~2.6 MB gzipped plus 765 KB of font zips, and most visitors never
+ * open a notation view — so a blanket warm-up spends a metered visitor's data
+ * on something they will not use. Absence of the API means go ahead: it ships
+ * only in Chromium, and treating "unknown" as "don't" would disable the
+ * warm-up for most of the web.
+ *
+ * This gates the background arm only. An explicit signal — a pointer on the
+ * Display toggle, or a view that already needs a staff — still loads Verovio;
+ * there the download is on the critical path either way.
+ */
+function shouldPrefetchInBackground(): boolean {
+  const conn = (navigator as Navigator & { connection?: NetworkInformation }).connection;
+  if (!conn) return true;
+  if (conn.saveData === true) return false;
+  return conn.effectiveType !== "slow-2g" && conn.effectiveType !== "2g";
+}
+
+/** Public alias of the connection-quality gate above, for callers that decide
+ *  themselves whether to arm a warm-up rather than using `prefetchVerovioWhenIdle`. */
+export const shouldPrefetch = shouldPrefetchInBackground;
+
+/**
+ * Arm a background warm-up for when the browser next goes idle, unless the
+ * connection says not to. Returns a cancel function, so an effect can drop it
+ * on unmount.
+ *
+ * Idle-callback rather than an immediate call so the fetch and the WASM
+ * instantiation never compete with first paint; Safari only shipped
+ * `requestIdleCallback` recently, hence the timeout fallback.
+ */
+export function prefetchVerovioWhenIdle(): () => void {
+  if (typeof window === "undefined") return () => {};
+  if (!shouldPrefetchInBackground()) return () => {};
+  const warm = () => { void prefetchVerovio(); };
+  if (typeof window.requestIdleCallback === "function") {
+    const id = window.requestIdleCallback(warm, { timeout: 3000 });
+    return () => window.cancelIdleCallback?.(id);
+  }
+  const id = window.setTimeout(warm, 1200);
+  return () => window.clearTimeout(id);
+}
+
+export interface RenderMeiOptions {
+  font?: VerovioFont;
+  /** Verovio `scale` (percent). Larger = bigger engraving. */
+  scale?: number;
+}
+
+/** Render an MEI document to a single-system SVG string. */
+export async function renderMeiToSvg(
+  mei: string,
+  { font = "Bravura", scale = 40 }: RenderMeiOptions = {},
+): Promise<string> {
+  // One retry, and only around the toolkit: a background prefetch now starts
+  // the shared attempt ~1 s into every page load, so a staff that mounts inside
+  // that window can inherit a rejection it had no part in and — its effect deps
+  // never changing again — sit on "notation unavailable" for the life of the
+  // page. `getVerovioToolkit` has already dropped the failed promise by the
+  // time this catch runs, so the second call genuinely starts fresh.
+  //
+  // Deliberately not wrapped around the engraving below: a rejection from
+  // `loadData`/`renderToSVG` is bad MEI, not a transient download, and retrying
+  // it would just fail twice. Bounded to a single extra attempt, so a hard
+  // failure still surfaces instead of looping.
+  let tk: Toolkit;
+  try {
+    tk = await getVerovioToolkit();
+  } catch {
+    tk = await getVerovioToolkit();
+  }
+  tk.setOptions({
+    font,
+    scale,
+    adjustPageWidth: true,
+    adjustPageHeight: true,
+    breaks: "none",
+    header: "none",
+    footer: "none",
+    pageMarginTop: 2,
+    pageMarginBottom: 8,
+    pageMarginLeft: 4,
+    pageMarginRight: 4,
+    svgViewBox: true,
+    svgRemoveXlink: true,
+  });
+  if (!tk.loadData(mei)) {
+    throw new Error("Verovio failed to load notation data");
+  }
+  return tk.renderToSVG(1);
+}
+
+// --- Single-note staff cards (ph-winds) --------------------------------
+//
+// Wind cards engrave one note at a time on a tiny (~150px) staff. Built on
+// top of `renderMeiToSvg` above rather than talking to the toolkit directly,
+// so the `setOptions` block stays in one place. Adds only what that shared
+// path doesn't do: memoising identical (pitch, clef, font) engravings, and
+// serialising renders through the queue so concurrent staff cards don't
+// stack concurrent `loadData`/`renderToSVG` calls on the one toolkit
+// instance (Verovio is not reentrant).
+
+import type { Pitch } from "@/music/pitch";
+import type { MusicFont } from "@/state/types";
+import { pitchKey } from "@/music/pitch";
+import { buildMei } from "./mei";
+
+/** Verovio `scale` (percent) tuned for a one-note staff at ~150px wide. */
+const STAFF_SCALE = 40;
+
+const svgCache = new Map<string, Promise<string>>();
+let queue: Promise<unknown> = Promise.resolve();
+
+/** Engrave one note. Serialised through the single toolkit; memoised per pitch/clef/font. */
+export function renderStaffSvg(p: Pitch, clef: "G" | "F", font: MusicFont): Promise<string> {
+  const key = `${pitchKey(p)}|${clef}|${font}`;
+  let hit = svgCache.get(key);
+  if (!hit) {
+    hit = queue.then(() =>
+      renderMeiToSvg(buildMei(p, clef), {
+        font: font === "petaluma" ? "Petaluma" : "Bravura",
+        scale: STAFF_SCALE,
+      }),
+    );
+    hit.catch(() => svgCache.delete(key));
+    svgCache.set(key, hit);
+    queue = hit.catch(() => undefined);
+  }
+  return hit;
+}
+
+/** Resolves once the render queue is idle — lets callers (and tests) wait for pending engravings. */
+export const pendingRenders = (): Promise<void> => queue.then(() => undefined);
