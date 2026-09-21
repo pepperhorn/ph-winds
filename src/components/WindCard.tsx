@@ -1,5 +1,5 @@
 import type { BoardMeta, FingeringCard, TextField } from '@/state/types';
-import { resolveCardText, resolveStyle } from '@/state/resolve';
+import { applyWildcards, resolveCardText, resolveStyle } from '@/state/resolve';
 import { fingeringsFor, getInstrument, type InstrumentInfo } from '@/music/instruments';
 import { formatPitchPair, toMidi } from '@/music/pitch';
 import { StaffNote } from '@/notation/StaffNote';
@@ -43,7 +43,9 @@ export function WindCard({ card, meta, onPlay, showPlay = 'hover', loadingPlay, 
     // user's own heading override when they set one — falling back to the
     // pitch pair otherwise — with the "not available on …" line always
     // underneath, never in its place.
-    const heading = card.text?.heading?.text || formatPitchPair(card.pitch);
+    const heading = card.text?.heading?.text
+      ? applyWildcards(card.text.heading.text, card.pitch, meta)
+      : formatPitchPair(card.pitch);
     return (
       <div data-orientation={card.orientation} data-display={card.display} data-export-hide
         className={`wc-card wc-card--unavailable relative flex flex-col items-center gap-1.5 rounded-2xl border border-hairline bg-surface p-4 opacity-[0.55] ${className}`}>

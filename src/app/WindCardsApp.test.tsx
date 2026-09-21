@@ -18,30 +18,32 @@ describe('WindCardsApp', () => {
     await userEvent.click(screen.getByRole('button', { name: 'C5' }));
     await userEvent.click(screen.getByRole('button', { name: 'Add to board' }));
     const board = document.getElementById('wc-board-export')!;
-    expect(within(board).getByText('C5')).toBeInTheDocument();
+    // The default card heading is the register-aware name for the written pitch.
+    expect(within(board).getByText('Middle C')).toBeInTheDocument();
     unmount();
     render(<WindCardsApp />);
-    expect(within(document.getElementById('wc-board-export')!).getByText('C5')).toBeInTheDocument();
+    expect(within(document.getElementById('wc-board-export')!).getByText('Middle C')).toBeInTheDocument();
   });
   it('concert mode maps key clicks to written pitch', async () => {
     render(<WindCardsApp />);   // default: alto sax
     await userEvent.click(screen.getByRole('radio', { name: 'Concert Pitch (Piano)' }));
     await userEvent.click(screen.getByRole('button', { name: 'E♭4' }));
-    expect(within(document.querySelector('.wc-builder-preview')!).getByText('C5')).toBeInTheDocument();
+    expect(within(document.querySelector('.wc-builder-preview')!).getByText('Middle C')).toBeInTheDocument();
   });
   it('switching instrument remaps the board rather than clearing it', async () => {
     render(<WindCardsApp />);   // default: alto sax
     await userEvent.click(screen.getByRole('button', { name: 'C5' }));
     await userEvent.click(screen.getByRole('button', { name: 'Add to board' }));
     const board = document.getElementById('wc-board-export')!;
-    expect(within(board).getByText('C5')).toBeInTheDocument();
+    expect(within(board).getByText('Middle C')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('radio', { name: 'Flute (Boehm, C foot)' }));
     // alto sax (-9) C5 sounds Eb4 (midi 63); flute (0) written at that midi
-    // is spelled D#4 by the flute fingering chart (its own spelling wins).
+    // is spelled D#4 by the flute fingering chart (its own spelling wins), and
+    // sits in the flute's low register.
     expect(board.querySelectorAll('.wc-card')).toHaveLength(1);
-    expect(within(board).queryByText('C5')).toBeNull();
-    expect(within(board).getByText('E♭4 / D♯4')).toBeInTheDocument();
+    expect(within(board).queryByText('Middle C')).toBeNull();
+    expect(within(board).getByText('Low E♭ / D♯')).toBeInTheDocument();
   });
 
   it('adds a text card with a placeholder heading, edits it, and never plays it', async () => {

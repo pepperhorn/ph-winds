@@ -1,5 +1,8 @@
 import type { TextField } from '@/state/types';
+import { WILDCARDS } from '@/state/resolve';
 import { Segmented } from './ui';
+
+const WILDCARD_TIP = `Wildcards resolved per card: ${WILDCARDS.join(' ')}`;
 
 /** 16x16 align-left/center/right glyphs: three horizontal bars, rounded caps. */
 function AlignIcon({ align }: { align: 'left' | 'center' | 'right' }) {
@@ -21,8 +24,13 @@ function AlignIcon({ align }: { align: 'left' | 'center' | 'right' }) {
   );
 }
 
-export function TextFieldControls({ label, value, base, onChange, placeholder }:
-  { label: string; value: Partial<TextField>; base: TextField; onChange(p: Partial<TextField>): void; placeholder?: string }) {
+/**
+ * `wildcards` defaults to `true` because this control is a card-text control
+ * in every place but one: the board's own title/subtitle/footer, which are
+ * board chrome and never get wildcard substitution, opt out explicitly.
+ */
+export function TextFieldControls({ label, value, base, onChange, placeholder, wildcards = true }:
+  { label: string; value: Partial<TextField>; base: TextField; onChange(p: Partial<TextField>): void; placeholder?: string; wildcards?: boolean }) {
   const v = { ...base, ...value };
   return (
     <div className="wc-text-field grid grid-cols-[4.5rem_1fr] items-center gap-2">
@@ -32,7 +40,8 @@ export function TextFieldControls({ label, value, base, onChange, placeholder }:
       </label>
       <div className="wc-text-field-controls flex flex-wrap items-center gap-2">
         <input value={value.text ?? ''} placeholder={placeholder ?? base.text} onChange={(e) => onChange({ text: e.target.value })}
-          aria-label={`${label} text`} className="wc-text-input min-w-0 flex-1 rounded-lg border border-hairline px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40" />
+          aria-label={`${label} text`} title={wildcards ? WILDCARD_TIP : undefined}
+          className="wc-text-input min-w-0 flex-1 rounded-lg border border-hairline px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40" />
         <Segmented label={`${label} size`} value={v.size} onChange={(size) => onChange({ size })}
           options={[{ value: 'S', label: 'S' }, { value: 'M', label: 'M' }, { value: 'L', label: 'L' }]} />
         <Segmented label={`${label} align`} value={v.align} onChange={(align) => onChange({ align })}
@@ -41,6 +50,15 @@ export function TextFieldControls({ label, value, base, onChange, placeholder }:
             { value: 'center', label: <AlignIcon align="center" />, ariaLabel: 'Center align' },
             { value: 'right', label: <AlignIcon align="right" />, ariaLabel: 'Right align' },
           ]} />
+        {wildcards && (
+          // `basis-full` so the hint wraps onto its own line inside the
+          // flex row, staying in the grid's second column under the input.
+          <p className="wc-text-field-hint basis-full text-[10px] leading-tight text-muted" title={WILDCARD_TIP}>
+            Wildcards: {WILDCARDS.map((w, i) => (
+              <span key={w}>{i > 0 && ' '}<code className="wc-wildcard-token rounded bg-canvas px-1 py-px">{w}</code></span>
+            ))}
+          </p>
+        )}
       </div>
     </div>
   );

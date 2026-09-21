@@ -1,7 +1,14 @@
 import type { BoardMeta, CardText, DiagramStyle, FingeringCard, TextCard, TextKey } from './types';
 import { type Pitch, formatPitchPair, transposePitch } from '@/music/pitch';
+import { registerName } from '@/music/registers';
 import { semitones } from '@/music/instruments';
+import { CARD_TEXT_TEMPLATES } from './defaults';
 
+/**
+ * Pitch-only auto labels. `resolveCardText` resolves the wildcard templates
+ * instead; these stay for callers that only have a pitch and no board context
+ * (the Builder's input placeholders).
+ */
 export const autoHeading = (p: Pitch) => formatPitchPair(p);
 
 export const autoSubtitle = (p: Pitch, semis: number) =>
@@ -9,17 +16,46 @@ export const autoSubtitle = (p: Pitch, semis: number) =>
 
 const KEYS: TextKey[] = ['heading', 'subtitle', 'footer'];
 
+/** What a card's text is resolved against: the card's own written pitch plus
+ * the board's instrument/horn. */
+export type WildcardContext = Pick<BoardMeta, 'instrument' | 'horn'>;
+
+/** The wildcard tokens users can type into card text, for the UI hint. */
+export const WILDCARDS = ['{noteName}', '{transposedPitch}', '{concertPitch}'] as const;
+
+/**
+ * Replace `{noteName}` / `{transposedPitch}` / `{concertPitch}` in a card
+ * text string with the values for that card's written pitch. Case-sensitive,
+ * every occurrence; anything else in braces is left as literal text.
+ *
+ * `{concertPitch}` on a non-transposing instrument is simply the same pitch —
+ * it never resolves to empty.
+ */
+export function applyWildcards(text: string, pitch: Pitch, meta: WildcardContext): string {
+  if (!text.includes('{')) return text;
+  const semis = semitones(meta.instrument, meta.horn);
+  const values: Record<string, string> = {
+    noteName: registerName(meta.instrument, meta.horn, pitch),
+    transposedPitch: formatPitchPair(pitch),
+    concertPitch: formatPitchPair(semis === 0 ? pitch : transposePitch(pitch, semis)),
+  };
+  return text.replace(/\{(\w+)\}/g, (token, key: string) =>
+    Object.hasOwn(values, key) ? values[key] : token);
+}
+
 export function resolveCardText(card: Pick<FingeringCard, 'pitch' | 'text'>, meta: BoardMeta): CardText {
   const semis = semitones(meta.instrument, meta.horn);
   const auto: Record<TextKey, string> = {
-    heading: autoHeading(card.pitch),
-    subtitle: autoSubtitle(card.pitch, semis),
-    footer: '',
+    heading: CARD_TEXT_TEMPLATES.heading,
+    // A non-transposing instrument has nothing to say here, so the default
+    // stays empty and the line hides itself.
+    subtitle: semis === 0 ? '' : CARD_TEXT_TEMPLATES.subtitle,
+    footer: CARD_TEXT_TEMPLATES.footer,
   };
   const out = {} as CardText;
   for (const k of KEYS) {
     const merged = { ...meta.cardText[k], ...card.text?.[k] };
-    const text = merged.text || auto[k];
+    const text = applyWildcards(merged.text || auto[k], card.pitch, meta);
     out[k] = { ...merged, text, show: merged.show && text !== '' };
   }
   return out;

@@ -17,9 +17,9 @@ export function BoardSettings({ meta, onMeta }: { meta: BoardMeta; onMeta(p: Par
         </Section>
         <Section title="Text">
           <p className="wc-board-text-heading text-xs font-medium text-ink">Board</p>
-          <TextFieldControls label="Title" value={meta.title} base={meta.title} onChange={(p) => onMeta({ title: { ...meta.title, ...p } })} placeholder="Board title" />
-          <TextFieldControls label="Subtitle" value={meta.subtitle} base={meta.subtitle} onChange={(p) => onMeta({ subtitle: { ...meta.subtitle, ...p } })} placeholder="Subtitle" />
-          <TextFieldControls label="Footer" value={meta.footer} base={meta.footer} onChange={(p) => onMeta({ footer: { ...meta.footer, ...p } })} placeholder="Footer" />
+          <TextFieldControls label="Title" value={meta.title} base={meta.title} onChange={(p) => onMeta({ title: { ...meta.title, ...p } })} placeholder="Board title" wildcards={false} />
+          <TextFieldControls label="Subtitle" value={meta.subtitle} base={meta.subtitle} onChange={(p) => onMeta({ subtitle: { ...meta.subtitle, ...p } })} placeholder="Subtitle" wildcards={false} />
+          <TextFieldControls label="Footer" value={meta.footer} base={meta.footer} onChange={(p) => onMeta({ footer: { ...meta.footer, ...p } })} placeholder="Footer" wildcards={false} />
           <p className="wc-card-defaults-heading pt-2 text-xs font-medium text-ink">Card defaults</p>
           <TextFieldControls label="Heading" value={meta.cardText.heading} base={meta.cardText.heading} onChange={(p) => setCardText('heading', p)} placeholder="Note name" />
           <TextFieldControls label="Subtitle" value={meta.cardText.subtitle} base={meta.cardText.subtitle} onChange={(p) => setCardText('subtitle', p)} placeholder="Sounding pitch" />

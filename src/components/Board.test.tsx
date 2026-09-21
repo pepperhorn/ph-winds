@@ -84,6 +84,29 @@ describe('Board', () => {
     // exercises the prop-plumbing path without throwing.
   });
 
+  it('resolves wildcards in card text but leaves the board title/subtitle literal', () => {
+    const base = createBoard('saxophone');
+    const state = {
+      ...base,
+      meta: {
+        ...base.meta,
+        horn: 'alto',
+        title: { ...base.meta.title, text: '{noteName}' },
+        subtitle: { ...base.meta.subtitle, text: '{concertPitch}' },
+      },
+      items: [{ ...newCardDraft(parsePitch('G5')), id: 'a' }] as CardItem[],
+    };
+    const { container } = render(
+      <Board state={state} onReorder={noop} onEdit={noop} onDuplicate={noop} onRemove={noop} onMeta={noop} onPlay={noop} />
+    );
+    // Board chrome: never substituted.
+    expect((container.querySelector('.wc-board-title') as HTMLInputElement).value).toBe('{noteName}');
+    expect((container.querySelector('.wc-board-subtitle') as HTMLInputElement).value).toBe('{concertPitch}');
+    // Card text: register-aware name from the default template.
+    expect(container.querySelector('.wc-card-heading')?.textContent).toBe('High G');
+    expect(container.querySelector('.wc-card-subtitle')?.textContent).toBe('Concert Pitch: B♭4 / A♯4');
+  });
+
   it('marks the board-item wrapper data-export-hide when the card has no fingering, but not when it does', () => {
     const state = createBoard('flute');
     const cards: CardItem[] = [
