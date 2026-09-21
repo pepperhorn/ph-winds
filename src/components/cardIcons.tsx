@@ -156,18 +156,21 @@ const GLYPHS: Record<CardIconId, Glyph> = {
     label: 'Saxophone',
     category: 'obj',
     shapes: [
-      // Mouthpiece, neck, body and the bottom bow, as one centreline. The hook
-      // has to be deep and near-vertical: shallower versions read as a curl.
-      { d: "M12.4 2.4L11.2 4.8C9.9 7.6 8.7 10.6 8.6 13.6C8.4 17.6 10.6 20.5 13.4 20.5C15 20.5 15.7 19.2 15.4 16" },
-      // The bell, which carries the recognition: an open triangular cone off
-      // the top of the bow, opening up and to the right. Drawn with a nearly
-      // straight rim, because a strongly curved one leaves a crescent-shaped
-      // hole that reads as a thumb.
-      { d: "M15.4 16.4L12.8 10C15.4 9.4 19 10.4 20.4 12.4Z" },
-      // Two key rods, kept inside the hook. Rods hung off the outside read as
-      // fringe at 22px.
-      { d: "M9.5 9.2L11.3 9.7" },
-      { d: "M8.9 12.4L10.7 12.9" },
+      // Laid out on the diagonal: mouthpiece upper-left, body descending right,
+      // tight bow at the bottom, bell opening up and out. Three things were
+      // each tried and rejected across four rounds of looking at renders:
+      //   - a bell at 45 degrees off a curled body reads as a bird's head;
+      //   - a body and bell both near-vertical enclose a loop and read as "6";
+      //   - key pearls down the body serrate into a thick line at 22px.
+      // Mouthpiece and neck.
+      { d: "M6.8 2.9 L7.9 4.9 C8.4 5.8 8.6 6.4 8.7 7.2" },
+      // Body and bottom bow, as one centreline.
+      { d: "M8.7 7.2 C9.1 11.1 10.1 15.2 11.4 17.8 C12.2 19.5 13.7 20.1 14.9 18.7" },
+      // The bell: a cone off the bow, wide-mouthed and pointing UP rather than
+      // out. Pointing it outward flattens the silhouette into a walking stick.
+      { d: "M14.9 18.7 L16.1 10.3" },
+      { d: "M14.9 18.7 L21.9 16.7" },
+      { d: "M16.1 10.3 C19.6 10.5 21.8 13.6 21.9 16.7" },
     ],
   },
   'obj:clarinet': {
