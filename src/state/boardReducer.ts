@@ -1,13 +1,15 @@
-import type { BoardMeta, BoardState, CardDraft, CardItem } from './types';
+import type { BoardMeta, BoardState, CardItem, CardPatch } from './types';
+import { isTextCard } from './types';
 import { getInstrument, semitones, spellWritten } from '@/music/instruments';
 import { toMidi } from '@/music/pitch';
 import { DEFAULT_STYLE } from './defaults';
+import { applyCardPatch } from './textCards';
 
 export type BoardAction =
   | { type: 'setMeta'; patch: Partial<BoardMeta> }
   | { type: 'setInstrument'; instrument: string; horn?: string }
   | { type: 'add'; card: CardItem }
-  | { type: 'update'; id: string; patch: Partial<CardDraft> }
+  | { type: 'update'; id: string; patch: CardPatch }
   | { type: 'remove'; id: string }
   | { type: 'duplicate'; id: string; newId: string }
   | { type: 'reorder'; fromId: string; toIndex: number }
@@ -23,6 +25,8 @@ export function boardReducer(s: BoardState, a: BoardAction): BoardState {
       const oldSemis = semitones(s.meta.instrument, s.meta.horn);
       const newSemis = semitones(a.instrument, horn);
       const items = s.items.map((c) => {
+        // A text card has no pitch to remap — it rides along untouched.
+        if (isTextCard(c)) return c;
         const newWrittenMidi = toMidi(c.pitch) + oldSemis - newSemis;
         return { ...c, pitch: spellWritten(a.instrument, horn, newWrittenMidi), fingeringIndex: 0 };
       });
@@ -32,8 +36,8 @@ export function boardReducer(s: BoardState, a: BoardAction): BoardState {
       const variants = a.instrument !== s.meta.instrument ? DEFAULT_STYLE.variants : s.meta.style.variants;
       return { ...s, items, meta: { ...s.meta, instrument: a.instrument, horn, style: { ...s.meta.style, variants } } };
     }
-    case 'add': return { ...s, items: [...s.items, a.card] };
-    case 'update': return { ...s, items: s.items.map((c) => (c.id === a.id ? { ...c, ...a.patch } : c)) };
+    case 'add': return { ...s, items: [...s.items, applyCardPatch(a.card)] };
+    case 'update': return { ...s, items: s.items.map((c) => (c.id === a.id ? applyCardPatch(c, a.patch) : c)) };
     case 'remove': return { ...s, items: s.items.filter((c) => c.id !== a.id) };
     case 'duplicate': {
       const i = s.items.findIndex((c) => c.id === a.id);

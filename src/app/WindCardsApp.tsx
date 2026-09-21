@@ -4,6 +4,9 @@ import { localStorageAdapter } from '@/state/storage';
 import { newCardDraft, createBoard } from '@/state/defaults';
 import { exportBoardJson, importBoardJson } from '@/state/io';
 import type { CardItem } from '@/state/types';
+import { isTextCard } from '@/state/types';
+import { boardImageChars, IMAGE_BUDGET_CHARS } from '@/state/textCards';
+import { fileToCardImage } from '@/state/image';
 import { getInstrument, playableMidis, rangeBands, semitones, spellWritten as spellWrittenPitch } from '@/music/instruments';
 import { prefersFlats, toMidi, type Pitch } from '@/music/pitch';
 import { instrumentVoice, PIANO_VOICE, soundingMidi } from '@/audio/voices';
@@ -16,6 +19,7 @@ import { AboutDialog } from '@/components/AboutDialog';
 import { Board } from '@/components/Board';
 import { BoardSettings } from '@/components/BoardSettings';
 import { Builder, type BuilderDraft } from '@/components/Builder';
+import { TextCardPanel } from '@/components/TextCardPanel';
 import { PianoPanel } from '@/components/PianoPanel';
 import { PianoKeyboard } from '@/components/PianoKeyboard';
 import { useToast } from '@/components/Toast';
@@ -38,6 +42,10 @@ function WindCardsApp() {
   const [soundOnClick, setSoundOnClick] = useState(() => readPref('ph-winds-sound-on-click', true));
   const [soundVoice, setSoundVoice] = useState<'voice' | 'piano'>(() => readPref('ph-winds-sound-voice', 'voice'));
   const [about, setAbout] = useState(false);
+  // The selected text card, edited in its own panel: the Builder is a
+  // fingering builder and a text card has nothing for it to build.
+  const [textEditId, setTextEditId] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   useEffect(() => writePref('ph-winds-piano-open', pianoOpen), [pianoOpen]);
   useEffect(() => writePref('ph-winds-sound-on-click', soundOnClick), [soundOnClick]);
@@ -74,12 +82,41 @@ function WindCardsApp() {
 
   const edit = (id: string) => {
     const c = state.items.find((x) => x.id === id);
-    if (c) { const { id: _id, ...rest } = c; setDraft({ ...rest, editingId: id }); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    if (!c) return;
+    if (isTextCard(c)) { setDraft(null); setTextEditId(id); setImageError(null); }
+    else { const { id: _id, ...rest } = c; setTextEditId(null); setDraft({ ...rest, editingId: id }); }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const textCard = textEditId ? state.items.find((c) => c.id === textEditId) : undefined;
+  const selectedTextCard = textCard && isTextCard(textCard) ? textCard : null;
+
+  const addTextCard = () => { setDraft(null); setImageError(null); setTextEditId(board.addTextCard()); };
+
+  /**
+   * Read a picked file into a stored data URI, then charge it against the
+   * board-wide picture budget. The card being edited is excluded from the
+   * tally so replacing its existing picture is not charged twice.
+   */
+  const pickImage = async (f: File | null) => {
+    if (!selectedTextCard) return;
+    setImageError(null);
+    try {
+      const dataUri = await fileToCardImage(f);
+      const used = boardImageChars(state.items, selectedTextCard.id);
+      if (used + dataUri.length > IMAGE_BUDGET_CHARS) {
+        setImageError('There is not enough room left on this board for another picture. Remove a picture from another card, or start a new board, and try again.');
+        return;
+      }
+      board.updateCard(selectedTextCard.id, { image: dataUri });
+    } catch (e) {
+      setImageError(e instanceof Error ? e.message : 'That picture could not be added.');
+    }
   };
 
   const onImport = async (f: File) => {
     const r = importBoardJson(await f.text());
-    if (r.ok) { board.replaceState(r.state); setDraft(null); } else toast(r.error);
+    if (r.ok) { board.replaceState(r.state); setDraft(null); setTextEditId(null); } else toast(r.error);
   };
 
   // Mirrors boardReducer's `setInstrument` remap so a card mid-edit in the
@@ -99,6 +136,7 @@ function WindCardsApp() {
     const b = createBoard(meta.instrument);
     board.replaceState({ ...b, meta: { ...b.meta, horn: meta.horn } });
     setDraft(null);
+    setTextEditId(null);
   };
 
   const exportImage = (kind: 'png' | 'pdf') =>
@@ -124,10 +162,13 @@ function WindCardsApp() {
           onPlay={(w) => draft && play(draft.pitch, w, 'draft')}
           loadingPlay={loading?.key === 'draft' ? loading.which : undefined}
           onMeta={board.setMeta} onInstrument={onInstrument} pianoPanel={pianoPanel} />
+        <TextCardPanel card={selectedTextCard} meta={meta} onAdd={addTextCard} onDone={() => setTextEditId(null)}
+          onChange={(patch) => selectedTextCard && board.updateCard(selectedTextCard.id, patch)}
+          onPickImage={pickImage} imageError={imageError} />
         <BoardSettings meta={meta} onMeta={board.setMeta} />
-        <Board state={state} selectedId={draft?.editingId} onReorder={board.reorder} onEdit={edit}
+        <Board state={state} selectedId={draft?.editingId ?? textEditId ?? undefined} onReorder={board.reorder} onEdit={edit}
           onDuplicate={board.duplicateCard} onRemove={board.removeCard} onMeta={board.setMeta}
-          onPlay={(c: CardItem, w) => play(c.pitch, w, c.id)} loading={loading} />
+          onPlay={(c: CardItem, w) => { if (!isTextCard(c)) play(c.pitch, w, c.id); }} loading={loading} />
       </main>
       <AboutDialog open={about} onClose={() => setAbout(false)} />
       {toastNode}

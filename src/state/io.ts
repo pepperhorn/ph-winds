@@ -1,20 +1,67 @@
-import type { BoardMeta, BoardState, CardItem, DiagramStyle, TextField, TextKey } from './types';
+import type { BoardMeta, BoardState, CardItem, CardKind, DiagramStyle, TextCard, TextField, TextKey } from './types';
 import { createBoard, DEFAULT_STYLE } from './defaults';
+import { applyCardPatch, IMAGE_BUDGET_CHARS } from './textCards';
+import { isCardIconId } from '@/components/cardIcons';
 import { listInstruments, getInstrument } from '@/music/instruments';
 
 type Result = { ok: true; state: BoardState } | { ok: false; error: string };
 const STEPS = new Set(['C', 'D', 'E', 'F', 'G', 'A', 'B']);
 const isObj = (v: unknown): v is Record<string, any> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
+/**
+ * Only known kinds survive. Anything else — a typo, a kind from a newer
+ * version, a hostile value — is read as a fingering card, which is also what
+ * an absent `kind` means, so boards saved before text cards existed load
+ * unchanged with no migration pass.
+ */
+export const parseKind = (v: unknown): CardKind => (v === 'text' ? 'text' : 'fingering');
+
+/**
+ * A card icon is an ID from `cardIcons`, not a path and not a glyph. Accept a
+ * string only when it carries a known prefix (`music:` / `obj:`); everything
+ * else — a bare label, a junk namespace, a URL — becomes "no icon". An ID the
+ * prefix check passes but this build doesn't ship simply renders as nothing.
+ */
+export const parseIcon = (v: unknown): string | undefined => (isCardIconId(v) ? v : undefined);
+
+/**
+ * SECURITY BOUNDARY. An imported board is untrusted input and this value goes
+ * straight into an `<img src>`, so the scheme is the whole defence.
+ *
+ * Accept ONLY a string that begins, with no leading whitespace, with
+ * `data:image/`. That rejects `javascript:`, `data:text/html,<script>`,
+ * remote URLs (which would also phone home on render), and whitespace-prefixed
+ * bypasses such as `" data:image/png;base64,..."` — browsers strip leading
+ * whitespace from a URL attribute, so a trim-then-check would let
+ * `" javascript:..."` through. Never trim before testing.
+ *
+ * The value is rendered with `<img>` and ONLY `<img>` — never `<object>`,
+ * `<iframe>` or `<embed>`. A `data:image/svg+xml` document is inert in an
+ * `<img>` (no scripts, no external fetches) and executable in the other three.
+ *
+ * Oversize pictures are dropped rather than being fatal: the cap is the same
+ * board-wide budget the editor enforces, so anything this app could author
+ * round-trips, while a hand-crafted file cannot blow out local storage.
+ */
+export function parseImage(v: unknown): string | undefined {
+  if (typeof v !== 'string') return undefined;
+  if (!v.startsWith('data:image/')) return undefined;
+  if (v.length > IMAGE_BUDGET_CHARS) return undefined;
+  return v;
+}
+
 function checkCard(c: any, i: number): string | null {
   const at = `card ${i + 1}`;
   if (!isObj(c) || typeof c.id !== 'string') return `${at}: missing id`;
+  if (typeof c.scale !== 'number' || c.scale < 0.5 || c.scale > 2) return `${at}: bad scale`;
+  // A text card has no pitch, fingering, display or orientation to require;
+  // its icon/image/text are all coerced rather than fatal.
+  if (parseKind(c.kind) === 'text') return null;
   const p = c.pitch;
   if (!isObj(p) || !STEPS.has(p.step) || ![-1, 0, 1].includes(p.alter) || !Number.isInteger(p.octave)) return `${at}: bad pitch`;
   if (!Number.isInteger(c.fingeringIndex) || c.fingeringIndex < 0) return `${at}: bad fingeringIndex`;
   if (!['fingering', 'both', 'notation'].includes(c.display)) return `${at}: bad display`;
   if (!['vertical', 'horizontal'].includes(c.orientation)) return `${at}: bad orientation`;
-  if (typeof c.scale !== 'number' || c.scale < 0.5 || c.scale > 2) return `${at}: bad scale`;
   return null;
 }
 
@@ -60,7 +107,35 @@ function partialStyle(v: unknown, validVariants: Set<string>): Partial<DiagramSt
   return out;
 }
 
+/** The three text slots, each sub-field kept only if it validates. */
+function sanitizeText(c: any): Partial<Record<TextKey, Partial<TextField>>> | undefined {
+  const t = isObj(c.text) ? c.text : undefined;
+  if (!t) return undefined;
+  const text: Partial<Record<TextKey, Partial<TextField>>> = {};
+  (['heading', 'subtitle', 'footer'] as TextKey[]).forEach((k) => {
+    if (k in t) {
+      const pf = partialTextField(t[k]);
+      if (pf) text[k] = pf;
+    }
+  });
+  return Object.keys(text).length ? text : undefined;
+}
+
+function sanitizeTextCard(c: any): TextCard {
+  const item: TextCard = { id: c.id, kind: 'text', scale: c.scale };
+  const text = sanitizeText(c);
+  if (text) item.text = text;
+  const icon = parseIcon(c.icon);
+  if (icon) item.icon = icon;
+  const image = parseImage(c.image);
+  if (image) item.image = image;
+  // Run the imported card through the one place that owns the icon/picture
+  // exclusion, so a hand-crafted file carrying both lands well-formed.
+  return applyCardPatch(item) as TextCard;
+}
+
 function sanitizeCard(c: any, validVariants: Set<string>): CardItem {
+  if (parseKind(c.kind) === 'text') return sanitizeTextCard(c);
   const item: CardItem = {
     id: c.id,
     pitch: c.pitch,
@@ -69,19 +144,8 @@ function sanitizeCard(c: any, validVariants: Set<string>): CardItem {
     orientation: c.orientation,
     scale: c.scale,
   };
-  if ('text' in c) {
-    const t = isObj(c.text) ? c.text : undefined;
-    if (t) {
-      const text: Partial<Record<TextKey, Partial<TextField>>> = {};
-      (['heading', 'subtitle', 'footer'] as TextKey[]).forEach((k) => {
-        if (k in t) {
-          const pf = partialTextField(t[k]);
-          if (pf) text[k] = pf;
-        }
-      });
-      if (Object.keys(text).length) item.text = text;
-    }
-  }
+  const text = sanitizeText(c);
+  if (text) item.text = text;
   if ('style' in c) {
     const s = partialStyle(c.style, validVariants);
     if (s && Object.keys(s).length) item.style = s;

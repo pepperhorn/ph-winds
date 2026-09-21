@@ -3,6 +3,13 @@ import { boardReducer } from './boardReducer';
 import { createBoard, newCardDraft, DEFAULT_STYLE } from './defaults';
 import { formatPitch, parsePitch, toMidi } from '@/music/pitch';
 import { fingeringsFor } from '@/music/instruments';
+import type { CardItem, FingeringCard, TextCard } from './types';
+import { isTextCard } from './types';
+import { newTextCardDraft } from './textCards';
+
+/** `CardItem` is a union now, so a reader has to narrow. These cases only ever
+ * build fingering cards, so the assertion is the point. */
+const fing = (c: CardItem) => c as FingeringCard;
 
 const card = (id: string, n = 'C5') => ({ id, ...newCardDraft(parsePitch(n)) });
 const withCards = (...ids: string[]) => ids.reduce((s, id) => boardReducer(s, { type: 'add', card: card(id) }), createBoard());
@@ -84,26 +91,26 @@ describe('boardReducer', () => {
     let s = boardReducer(createBoard('saxophone'), { type: 'setMeta', patch: { horn: 'alto' } });
     s = boardReducer(s, { type: 'add', card: card('a', 'C5') });
     s = boardReducer(s, { type: 'setInstrument', instrument: 'flute' });
-    expect(formatPitch(s.items[0].pitch)).toBe('D♯4');
-    expect(s.items[0].fingeringIndex).toBe(0);
+    expect(formatPitch(fing(s.items[0]).pitch)).toBe('D♯4');
+    expect(fing(s.items[0]).fingeringIndex).toBe(0);
   });
   it('remaps written pitch to keep the sounding pitch: alto sax C5 -> clarinet', () => {
     let s = boardReducer(createBoard('saxophone'), { type: 'setMeta', patch: { horn: 'alto' } });
     s = boardReducer(s, { type: 'add', card: card('a', 'C5') });
     s = boardReducer(s, { type: 'setInstrument', instrument: 'clarinet' });
-    expect(formatPitch(s.items[0].pitch)).toBe('F4');
+    expect(formatPitch(fing(s.items[0]).pitch)).toBe('F4');
   });
   it('remaps written pitch to keep the sounding pitch: flute C5 -> alto sax', () => {
     let s = boardReducer(createBoard('flute'), { type: 'add', card: card('a', 'C5') });
     s = boardReducer(s, { type: 'setInstrument', instrument: 'saxophone', horn: 'alto' });
-    expect(formatPitch(s.items[0].pitch)).toBe('A5');
+    expect(formatPitch(fing(s.items[0]).pitch)).toBe('A5');
   });
   it('round trip returns the original written note', () => {
     let s = boardReducer(createBoard('saxophone'), { type: 'setMeta', patch: { horn: 'alto' } });
     s = boardReducer(s, { type: 'add', card: card('a', 'C5') });
     s = boardReducer(s, { type: 'setInstrument', instrument: 'flute' });
     s = boardReducer(s, { type: 'setInstrument', instrument: 'saxophone', horn: 'alto' });
-    expect(formatPitch(s.items[0].pitch)).toBe('C5');
+    expect(formatPitch(fing(s.items[0]).pitch)).toBe('C5');
   });
   it('preserves fingeringIndex reset, and card text/style/scale overrides across a remap', () => {
     let s = boardReducer(createBoard('saxophone'), { type: 'setMeta', patch: { horn: 'alto' } });
@@ -112,7 +119,7 @@ describe('boardReducer', () => {
       card: { ...card('a', 'C5'), fingeringIndex: 2, scale: 1.5, text: { heading: { text: 'My note' } }, style: { look: 'dotted' } },
     });
     s = boardReducer(s, { type: 'setInstrument', instrument: 'clarinet' });
-    const [c] = s.items;
+    const c = fing(s.items[0]);
     expect(c.fingeringIndex).toBe(0);
     expect(c.scale).toBe(1.5);
     expect(c.text).toEqual({ heading: { text: 'My note' } });
@@ -137,24 +144,75 @@ describe('boardReducer', () => {
     // up an octave: recorder C5 (written) -> flute C6 (written).
     let s = boardReducer(createBoard('recorder'), { type: 'add', card: card('a', 'C5') });
     s = boardReducer(s, { type: 'setInstrument', instrument: 'flute' });
-    expect(formatPitch(s.items[0].pitch)).toBe('C6');
+    expect(formatPitch(fing(s.items[0]).pitch)).toBe('C6');
   });
   it('tin-whistle horn switch is an identity remap (all horns are transpose 0)', () => {
     let s = boardReducer(createBoard('tin-whistle'), { type: 'add', card: card('a', 'D5') });
     s = boardReducer(s, { type: 'setInstrument', instrument: 'tin-whistle', horn: 'C' });
-    expect(formatPitch(s.items[0].pitch)).toBe('D5');
+    expect(formatPitch(fing(s.items[0]).pitch)).toBe('D5');
   });
   it('round trips through an unavailable instrument: flute C7 -> trombone (unavailable) -> flute', () => {
     let s = boardReducer(createBoard('flute'), { type: 'add', card: card('a', 'C7') });
     s = boardReducer(s, { type: 'setInstrument', instrument: 'trombone' });
     // C7 written is well outside trombone's playable range — no fingering.
-    expect(fingeringsFor('trombone', undefined, toMidi(s.items[0].pitch))).toEqual([]);
+    expect(fingeringsFor('trombone', undefined, toMidi(fing(s.items[0]).pitch))).toEqual([]);
     s = boardReducer(s, { type: 'setInstrument', instrument: 'flute' });
-    expect(formatPitch(s.items[0].pitch)).toBe('C7');
+    expect(formatPitch(fing(s.items[0]).pitch)).toBe('C7');
   });
   it('clear empties the board without touching meta', () => {
     const s = boardReducer(withCards('a', 'b'), { type: 'clear' });
     expect(s.items).toEqual([]);
     expect(s.meta.instrument).toBe('saxophone');
+  });
+});
+
+describe('boardReducer with text cards', () => {
+  const textCard = (id: string) => ({ id, ...newTextCardDraft() });
+  const mixed = () => {
+    let s = boardReducer(createBoard('saxophone'), { type: 'setMeta', patch: { horn: 'alto' } });
+    s = boardReducer(s, { type: 'add', card: card('a', 'C5') });
+    s = boardReducer(s, { type: 'add', card: textCard('t') });
+    s = boardReducer(s, { type: 'add', card: card('b', 'D5') });
+    return s;
+  };
+
+  it('adds, updates, duplicates, removes and reorders a text card among fingering cards', () => {
+    let s = mixed();
+    expect(s.items.map((c) => c.id)).toEqual(['a', 't', 'b']);
+    expect(s.items.filter(isTextCard)).toHaveLength(1);
+
+    s = boardReducer(s, { type: 'update', id: 't', patch: { text: { heading: { text: 'Warm-ups' } } } });
+    expect((s.items[1] as TextCard).text?.heading?.text).toBe('Warm-ups');
+
+    s = boardReducer(s, { type: 'duplicate', id: 't', newId: 't2' });
+    expect(s.items.map((c) => c.id)).toEqual(['a', 't', 't2', 'b']);
+    expect(isTextCard(s.items[2])).toBe(true);
+    expect((s.items[2] as TextCard).text?.heading?.text).toBe('Warm-ups');
+
+    // Insertion index 0: the text card lands in the gap before every card.
+    s = boardReducer(s, { type: 'reorder', fromId: 't', toIndex: 0 });
+    expect(s.items.map((c) => c.id)).toEqual(['t', 'a', 't2', 'b']);
+
+    s = boardReducer(s, { type: 'remove', id: 't2' });
+    expect(s.items.map((c) => c.id)).toEqual(['t', 'a', 'b']);
+  });
+
+  it('setInstrument remaps fingering cards and leaves a text card untouched', () => {
+    let s = mixed();
+    const before = s.items[1];
+    s = boardReducer(s, { type: 'setInstrument', instrument: 'flute' });
+    expect(formatPitch(fing(s.items[0]).pitch)).toBe('D♯4');
+    // Same object identity: the text card is not rebuilt, let alone repitched.
+    expect(s.items[1]).toBe(before);
+    expect('pitch' in s.items[1]).toBe(false);
+  });
+
+  it('routes an added card through the icon/picture exclusion', () => {
+    const s = boardReducer(createBoard(), {
+      type: 'add',
+      card: { id: 't', kind: 'text', scale: 1, icon: 'obj:star', image: 'data:image/png;base64,AAAA' },
+    });
+    expect((s.items[0] as TextCard).image).toBeUndefined();
+    expect((s.items[0] as TextCard).icon).toBe('obj:star');
   });
 });
