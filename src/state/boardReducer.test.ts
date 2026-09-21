@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { boardReducer } from './boardReducer';
+import { boardReducer, duplicateDropsImage } from './boardReducer';
 import { createBoard, newCardDraft, DEFAULT_STYLE } from './defaults';
 import { formatPitch, parsePitch, toMidi } from '@/music/pitch';
 import { fingeringsFor } from '@/music/instruments';
-import type { CardItem, FingeringCard, TextCard } from './types';
+import type { BoardState, CardItem, FingeringCard, TextCard } from './types';
 import { isTextCard } from './types';
-import { newTextCardDraft } from './textCards';
+import { boardImageChars, IMAGE_BUDGET_CHARS, newTextCardDraft } from './textCards';
 
 /** `CardItem` is a union now, so a reader has to narrow. These cases only ever
  * build fingering cards, so the assertion is the point. */
@@ -210,9 +210,54 @@ describe('boardReducer with text cards', () => {
   it('routes an added card through the icon/picture exclusion', () => {
     const s = boardReducer(createBoard(), {
       type: 'add',
-      card: { id: 't', kind: 'text', scale: 1, icon: 'obj:star', image: 'data:image/png;base64,AAAA' },
+      card: { id: 't', kind: 'text', scale: 1, icon: 'obj:metronome', image: 'data:image/png;base64,AAAA' },
     });
     expect((s.items[0] as TextCard).image).toBeUndefined();
-    expect((s.items[0] as TextCard).icon).toBe('obj:star');
+    expect((s.items[0] as TextCard).icon).toBe('obj:metronome');
+  });
+});
+
+describe('boardReducer — duplicate and the picture budget', () => {
+  // 500 KB: one is accepted by the editor with the board well under budget.
+  const HALF_MEG = `data:image/png;base64,${'A'.repeat(500 * 1024 - 22)}`;
+  const withPicture = () =>
+    boardReducer(createBoard(), { type: 'add', card: { id: 't', ...newTextCardDraft('Warm-ups'), image: HALF_MEG } });
+  const copy = (s: BoardState, newId: string) => boardReducer(s, { type: 'duplicate', id: 't', newId });
+
+  it('copies the picture while the board has room', () => {
+    let s = withPicture();
+    s = copy(s, 't2');
+    expect((s.items[1] as TextCard).image).toBe(HALF_MEG);
+    s = copy(s, 't3');
+    expect((s.items[1] as TextCard).image).toBe(HALF_MEG);
+    expect(boardImageChars(s.items)).toBe(3 * (500 * 1024));
+  });
+
+  it('copies the card WITHOUT its picture rather than blowing the budget', () => {
+    let s = withPicture();
+    s = copy(s, 't2');
+    s = copy(s, 't3');
+    s = copy(s, 't4');
+    // Four cards on the board; the fourth picture would have reached 2,048,000
+    // chars against a 1,572,864 budget.
+    expect(s.items).toHaveLength(4);
+    expect(boardImageChars(s.items)).toBeLessThanOrEqual(IMAGE_BUDGET_CHARS);
+    const newest = s.items[1] as TextCard;
+    expect(newest.id).toBe('t4');
+    expect(newest.image).toBeUndefined();
+    // The text is still worth copying — that is the whole point of not refusing.
+    expect(newest.text?.heading?.text).toBe('Warm-ups');
+  });
+
+  it('duplicateDropsImage tells the UI what the reducer is about to do', () => {
+    let s = withPicture();
+    expect(duplicateDropsImage(s, 't')).toBe(false);
+    s = copy(s, 't2');
+    s = copy(s, 't3');
+    expect(duplicateDropsImage(s, 't')).toBe(true);
+    // A card with no picture, and an id that is not on the board, never warn.
+    expect(duplicateDropsImage(s, 'nope')).toBe(false);
+    const plain = boardReducer(s, { type: 'add', card: { id: 'n', ...newTextCardDraft() } });
+    expect(duplicateDropsImage(plain, 'n')).toBe(false);
   });
 });

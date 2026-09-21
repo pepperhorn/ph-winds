@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyCardPatch, boardImageChars, isTextCardBlank, newTextCardDraft, TEXT_CARD_PLACEHOLDER } from './textCards';
+import { applyCardPatch, boardImageChars, cardIconRenders, exceedsImageBudget, IMAGE_BUDGET_CHARS, isTextCardBlank, newTextCardDraft, TEXT_CARD_PLACEHOLDER } from './textCards';
 import { isFingeringCard, isTextCard, type CardItem, type FingeringCard, type TextCard } from './types';
 import { newCardDraft } from './defaults';
 import { parsePitch } from '@/music/pitch';
@@ -24,13 +24,23 @@ describe('the card union', () => {
     expect(isTextCard({ ...fingering('a'), kind: 'fingering' })).toBe(false);
   });
 
-  it('a new text card is never blank — an empty one is an invisible box', () => {
+  it('a new text card is never blank — an empty one is a bare unexplained bar', () => {
     const t = newTextCardDraft();
     expect(t.text?.heading?.text).toBe(TEXT_CARD_PLACEHOLDER);
     expect(isTextCardBlank({ id: 'x', ...t })).toBe(false);
     expect(isTextCardBlank({ id: 'x', kind: 'text', scale: 1 })).toBe(true);
     expect(isTextCardBlank({ id: 'x', kind: 'text', scale: 1, icon: 'music:trebleClef' })).toBe(false);
     expect(isTextCardBlank({ id: 'x', kind: 'text', scale: 1, text: { heading: { text: '' } } })).toBe(true);
+  });
+
+  it('a card whose only content is an icon this build cannot draw is blank', () => {
+    // "Has an icon" is not "shows an icon": `parseIcon` deliberately admits a
+    // forward-compatible id and `CardIcon` renders an unknown one as nothing,
+    // so this card has nothing on it and needs the placeholder like any other.
+    expect(isTextCardBlank({ id: 'x', kind: 'text', scale: 1, icon: 'music:notYetDrawn' })).toBe(true);
+    expect(cardIconRenders('music:notYetDrawn')).toBe(false);
+    expect(cardIconRenders('music:trebleClef')).toBe(true);
+    expect(cardIconRenders(undefined)).toBe(false);
   });
 });
 
@@ -55,10 +65,19 @@ describe('applyCardPatch — the one place icon/picture exclusion lives', () => 
     expect(after.image).toBeUndefined();
   });
 
-  it('a card arriving with both keeps the icon', () => {
-    const after = applyCardPatch(text('a', { icon: 'obj:star', image: PNG })) as TextCard;
-    expect(after.icon).toBe('obj:star');
+  it('a card arriving with both keeps the icon — the cheap one', () => {
+    const after = applyCardPatch(text('a', { icon: 'obj:metronome', image: PNG })) as TextCard;
+    expect(after.icon).toBe('obj:metronome');
     expect(after.image).toBeUndefined();
+  });
+
+  it('...unless this build cannot draw that icon, in which case the picture is the only art left', () => {
+    // `parseIcon` admits a well-prefixed id from a newer build on purpose, and
+    // `CardIcon` draws it as nothing. Keeping it over a real picture would
+    // leave the card with no visible art at all.
+    const after = applyCardPatch(text('a', { icon: 'obj:notYetDrawn', image: PNG })) as TextCard;
+    expect(after.icon).toBeUndefined();
+    expect(after.image).toBe(PNG);
   });
 
   it('leaves a fingering card alone', () => {
@@ -79,5 +98,23 @@ describe('boardImageChars', () => {
     expect(boardImageChars(items)).toBe(PNG.length * 2 + 4);
     expect(boardImageChars(items, 'b')).toBe(PNG.length + 4);
     expect(boardImageChars([fingering('a')])).toBe(0);
+  });
+});
+
+describe('exceedsImageBudget', () => {
+  const big = (n: number) => 'A'.repeat(n);
+
+  it('is the one question every path that grows a board asks', () => {
+    const half = big(IMAGE_BUDGET_CHARS / 2);
+    expect(exceedsImageBudget([], half)).toBe(false);
+    expect(exceedsImageBudget([text('a', { image: half })], half)).toBe(false);
+    expect(exceedsImageBudget([text('a', { image: half }), text('b', { image: half })], big(1))).toBe(true);
+  });
+
+  it('excludes the card whose own picture is being replaced, so it is not billed twice', () => {
+    const almost = big(IMAGE_BUDGET_CHARS - 10);
+    const items = [text('a', { image: almost })];
+    expect(exceedsImageBudget(items, almost)).toBe(true);
+    expect(exceedsImageBudget(items, almost, 'a')).toBe(false);
   });
 });

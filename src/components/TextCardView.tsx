@@ -1,6 +1,6 @@
 import type { BoardMeta, CardItem, TextCard, TextField } from '@/state/types';
 import { isTextCard } from '@/state/types';
-import { isTextCardBlank } from '@/state/textCards';
+import { cardIconRenders, isTextCardBlank } from '@/state/textCards';
 import { resolveTextCardText } from '@/state/resolve';
 import { CardIcon } from './cardIcons';
 import { WindCard } from './WindCard';
@@ -31,28 +31,38 @@ export function TextCardView({ card, meta, className = '' }: { card: TextCard; m
   const art = Math.round(BASE_TEXT_CARD_ART * card.scale);
 
   // The empty state lives HERE rather than only in the "seed a placeholder
-  // heading" creation path: a card with no art and no text would otherwise be
-  // a zero-content padded box, invisible and so impossible to click, select or
-  // delete. Every creation path would have to remember to seed it; the
-  // renderer only has to be right once.
+  // heading" creation path. The card is not invisible without it — the wrapper
+  // below always has a width, a border and a shadow, so a blank card draws as
+  // a bare ~168×32 bar you can still click, drag and delete. It is
+  // unexplained: nothing on it says it is an empty card of yours rather than a
+  // card that failed to render, and nothing says what to do about it. A card
+  // can end up blank by routes the seeding never sees — every slot's text
+  // deleted, an icon cleared, or an import whose only art is an icon id this
+  // build cannot draw — so the renderer is the one place that catches them all.
   const blank = isTextCardBlank(card);
 
   return (
     <div data-card-kind="text"
       style={{ width: Math.round(BASE_TEXT_CARD_WIDTH * card.scale) }}
       className={`wc-card wc-text-card group relative flex flex-col items-center justify-center gap-2 rounded-2xl border border-hairline bg-surface p-4 shadow-glow transition-shadow hover:shadow-glow-strong ${className}`}>
-      {card.image
-        // SECURITY: `image` is a data URI that may have come off an untrusted
-        // imported board, and `parseImage` admits `data:image/svg+xml`. An
-        // <img> renders SVG inert — scripts, event handlers and external
-        // fetches inside it never run. The same bytes in <object>, <iframe> or
-        // <embed>, or injected as markup, execute. This must stay an <img>;
-        // there is no "better" element for it.
-        ? <img className="wc-text-card-image max-w-full rounded-lg object-contain" src={card.image}
-            alt={text.heading.show ? '' : 'Card picture'} style={{ maxHeight: art, height: art }} />
-        : card.icon
-          ? <CardIcon className="wc-text-card-icon" id={card.icon} size={art}
-              title={text.heading.show ? undefined : (text.subtitle.show ? text.subtitle.text : undefined)} />
+      {/*
+        * At most one piece of art. `applyCardPatch` already guarantees that,
+        * and resolves a card carrying both the same way this does — icon
+        * first — so the two layers agree on which one survives instead of
+        * each quietly preferring the other.
+        */}
+      {card.icon && cardIconRenders(card.icon)
+        ? <CardIcon className="wc-text-card-icon" id={card.icon} size={art}
+            title={text.heading.show ? undefined : (text.subtitle.show ? text.subtitle.text : undefined)} />
+        : card.image
+          // SECURITY: `image` is a data URI that may have come off an untrusted
+          // imported board, and `parseImage` admits `data:image/svg+xml`. An
+          // <img> renders SVG inert — scripts, event handlers and external
+          // fetches inside it never run. The same bytes in <object>, <iframe> or
+          // <embed>, or injected as markup, execute. This must stay an <img>;
+          // there is no "better" element for it.
+          ? <img className="wc-text-card-image max-w-full rounded-lg object-contain" src={card.image}
+              alt={text.heading.show ? '' : 'Card picture'} style={{ maxHeight: art, height: art }} />
           : null}
       <Line f={text.heading} kind="heading" cls="wc-text-card-heading" />
       <Line f={text.subtitle} kind="other" cls="wc-text-card-subtitle" />

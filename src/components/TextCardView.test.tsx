@@ -53,9 +53,25 @@ describe('TextCardView', () => {
     expect((container.querySelector('.wc-text-card') as HTMLElement).style.width).toBe('336px');
   });
 
-  it('leaves wildcards literal — they resolve against a pitch and a text card has none', () => {
-    render(<TextCardView meta={meta} card={textCard({ text: { heading: { text: '{noteName} and {concertPitch}' } } })} />);
-    expect(screen.getByText('{noteName} and {concertPitch}')).toBeInTheDocument();
+  it('gets no pitch-derived text, unlike the fingering card beside it', () => {
+    // The real, load-bearing difference between `resolveTextCardText` and
+    // `resolveCardText`: the fingering path fills an empty slot from the
+    // card's pitch, and the text path has no pitch to fill anything from. It
+    // leaves what was typed, and leaves an untyped slot empty.
+    //
+    // NB when PR #8 (`feat/register-wildcards`) lands, `resolveCardText` also
+    // grows `{noteName}`-style substitution. `resolveTextCardText` is a
+    // separate merge loop and must NOT grow it — same reason, no pitch — so
+    // extend this case with a literal-braces assertion then. Asserting that
+    // today would prove nothing: there is no substitution to escape.
+    const { container } = render(<TextCardView meta={meta} card={{ id: 't', kind: 'text', scale: 1, text: { heading: { text: 'Warm-ups' } } }} />);
+    expect(screen.getByText('Warm-ups')).toBeInTheDocument();
+    expect(container.querySelector('.wc-text-card-subtitle')).toBeNull();
+
+    // The same board, the same empty slots, on a fingering card: both filled.
+    const fingering = render(<CardView meta={meta} card={{ id: 'a', ...newCardDraft(parsePitch('C5')) }} />);
+    expect(fingering.container.querySelector('.wc-card-heading')?.textContent).toBe('C5');
+    expect(fingering.container.querySelector('.wc-card-subtitle')?.textContent).toMatch(/Concert Pitch/);
   });
 
   it('a card with no art and no text renders a visible placeholder, not an invisible box', () => {
