@@ -7,6 +7,11 @@ a staff, or both. Cards collect on a board that exports to PNG, PDF and JSON,
 and can play back the written note as instrument voice or piano at sounding
 pitch.
 
+![A ph-winds board titled "Alto Sax — First Notes", showing three alto
+saxophone fingering cards labelled Middle G, Middle B♭ / A♯ and High G — each
+with its concert pitch, a fingering diagram and the written note on a staff —
+alongside a text card reading "Long Tones".](docs/board-screenshot.png)
+
 ## Stack
 
 - [Astro 7](https://astro.build) (static output) with a single React 19 island
