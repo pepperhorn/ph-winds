@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { BoardMeta, BoardState, CardItem, TextField } from '@/state/types';
-import { WindCard } from './WindCard';
+import { isTextCard } from '@/state/types';
+import { CardView } from './TextCardView';
 import { hasFingering } from '@/music/instruments';
 import { toMidi } from '@/music/pitch';
 
@@ -102,8 +103,11 @@ export function Board({ state, onReorder, onEdit, onDuplicate, onRemove, onMeta,
     ? dropAt
     : null;
 
+  // A text card has no pitch, so "is this note playable on this instrument"
+  // simply does not apply to it — it is never unavailable and never dropped
+  // from an export.
   const unavailableById = useMemo(
-    () => new Map(items.map((c) => [c.id, !hasFingering(meta.instrument, meta.horn, toMidi(c.pitch))])),
+    () => new Map(items.map((c) => [c.id, !isTextCard(c) && !hasFingering(meta.instrument, meta.horn, toMidi(c.pitch))])),
     [items, meta.instrument, meta.horn],
   );
 
@@ -138,7 +142,7 @@ export function Board({ state, onReorder, onEdit, onDuplicate, onRemove, onMeta,
                 className={`wc-board-item group/item relative shrink-0 ${drag === c.id ? 'opacity-40' : ''} ${selectedId === c.id ? 'rounded-2xl ring-2 ring-accent' : ''}`}>
                 {indicatorAt === i && <DropIndicator stacked={stacked} side="before" />}
                 {indicatorAt === items.length && i === items.length - 1 && <DropIndicator stacked={stacked} side="after" />}
-                <WindCard card={c} meta={meta} onPlay={(w) => onPlay(c, w)} loadingPlay={loadingPlay} />
+                <CardView card={c} meta={meta} onPlay={(w) => onPlay(c, w)} loadingPlay={loadingPlay} />
                 <div data-export-hide className="wc-card-toolbar absolute -top-3 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-hairline bg-surface px-1.5 py-1 opacity-0 shadow-glow transition group-hover/item:opacity-100 group-focus-within/item:opacity-100">
                   {/* A <button> ancestor swallows the mousedown Firefox needs to arm a native drag
                       gesture, so the handle is a role="button" span, not a real button. */}

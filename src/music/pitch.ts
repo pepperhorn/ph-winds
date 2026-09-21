@@ -16,6 +16,8 @@ export function parsePitch(s: string): Pitch {
 const acc = (a: number, sharp: string, flat: string) => (a === 1 ? sharp : a === -1 ? flat : '');
 export const pitchKey = (p: Pitch) => `${p.step}${acc(p.alter, '#', 'b')}${p.octave}`;
 export const formatPitch = (p: Pitch) => `${p.step}${acc(p.alter, '♯', '♭')}${p.octave}`;
+/** Letter plus accidental, with no octave digit — "E♭", "C". */
+export const formatPitchClass = (p: Pitch) => `${p.step}${acc(p.alter, '♯', '♭')}`;
 
 /**
  * Both enharmonic spellings for a black-key pitch, flat first (e.g.

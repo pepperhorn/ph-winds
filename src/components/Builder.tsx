@@ -1,12 +1,11 @@
 import type { ReactNode } from 'react';
 import type { BoardMeta, CardDraft, TextKey } from '@/state/types';
-import { autoHeading, autoSubtitle } from '@/state/resolve';
+import { autoSubtitle, resolveCardText, resolveStyle } from '@/state/resolve';
 import { fingeringsFor, getInstrument, listInstruments, semitones, type InstrumentId } from '@/music/instruments';
 import { toMidi } from '@/music/pitch';
-import { resolveStyle } from '@/state/resolve';
 import { WindCard } from './WindCard';
 import { FingeringView } from './FingeringView';
-import { TextFieldControls } from './TextFieldControls';
+import { TextFieldControls, WildcardHint } from './TextFieldControls';
 import { Button, onRovingKeyDown, rovingTabIndex, Segmented, Slider } from './ui';
 import { INSTRUMENT_ICONS } from './instrumentIcons';
 
@@ -37,8 +36,7 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
     <section className="wc-builder space-y-6 rounded-3xl border border-hairline bg-surface/80 p-6 shadow-glow backdrop-blur">
       <div className="wc-builder-settings-main flex flex-col gap-3 rounded-2xl border border-hairline bg-canvas p-4"
         role="group" aria-label="Board settings">
-        <div className="wc-settings-group wc-settings-group-instrument flex flex-col items-center gap-1" role="group" aria-labelledby="wc-settings-caption-instrument">
-          <span id="wc-settings-caption-instrument" className="wc-settings-caption text-[11px] text-muted">Instrument:</span>
+        <div className="wc-settings-group wc-settings-group-instrument flex flex-col items-center gap-1">
         <div role="radiogroup" aria-label="Instrument" className="wc-instrument-picker flex flex-wrap justify-center gap-2">
           {listInstruments().map((i) => {
             const selected = meta.instrument === i.id;
@@ -91,7 +89,7 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
           <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-orient">
             <span id="wc-settings-caption-orient" className="wc-settings-caption text-[11px] text-muted">Orientation:</span>
             <Segmented label="Orientation:" value={meta.diagramOrient} onChange={(diagramOrient) => onMeta({ diagramOrient })}
-              options={[{ value: 'vertical', label: 'Upright' }, { value: 'horizontal', label: 'Sideways' }]} />
+              options={[{ value: 'vertical', label: 'Vertical' }, { value: 'horizontal', label: 'Horizontal' }]} />
           </div>
           <div className="wc-settings-group flex flex-col items-start gap-1" role="group" aria-labelledby="wc-settings-caption-columns">
             <span id="wc-settings-caption-columns" className="wc-settings-caption text-[11px] text-muted">Cards per Row:</span>
@@ -138,8 +136,16 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
           </div>
         )}
         <div className="wc-builder-text space-y-2">
+          <p className="wc-builder-text-heading flex items-center gap-1.5 text-xs font-medium text-ink">
+            Card text<WildcardHint />
+          </p>
+          {/* The placeholder has to be what the card actually shows when this
+              field is left blank — which is the resolved heading for *this*
+              board (register name and all), not the bare pitch. Resolved from
+              the pitch alone, ignoring `draft.text`, so it keeps showing the
+              default while the user types over it. */}
           <TextFieldControls label="Heading" value={draft?.text?.heading ?? {}} base={meta.cardText.heading}
-            placeholder={draft ? autoHeading(draft.pitch) : ''} onChange={(p) => setText('heading', p)} />
+            placeholder={draft ? resolveCardText({ pitch: draft.pitch }, meta).heading.text : ''} onChange={(p) => setText('heading', p)} />
           <TextFieldControls label="Subtitle" value={draft?.text?.subtitle ?? {}} base={meta.cardText.subtitle}
             placeholder={draft ? autoSubtitle(draft.pitch, semis) : ''} onChange={(p) => setText('subtitle', p)} />
           <TextFieldControls label="Footer" value={draft?.text?.footer ?? {}} base={meta.cardText.footer} onChange={(p) => setText('footer', p)} />
