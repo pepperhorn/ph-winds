@@ -1,8 +1,46 @@
+import { useId, useState } from 'react';
 import type { TextField } from '@/state/types';
 import { WILDCARDS } from '@/state/resolve';
 import { Segmented } from './ui';
 
 const WILDCARD_TIP = `Wildcards resolved per card: ${WILDCARDS.join(' ')}`;
+
+/** What each token resolves to, for the popover. Keyed in WILDCARDS order. */
+const WILDCARD_MEANINGS: Record<string, string> = {
+  '{noteName}': 'register name, e.g. High G',
+  '{transposedPitch}': 'written pitch, e.g. G5',
+  '{concertPitch}': 'sounding pitch, e.g. B♭4',
+};
+
+/**
+ * One ⓘ for a whole group of card-text fields. All three fields take the same
+ * tokens, so a reminder under each one was the same line printed three times.
+ */
+export function WildcardHint({ className = '' }: { className?: string }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  return (
+    <span className={`wc-wildcard-hint relative inline-flex ${className}`}>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls={id}
+        aria-label="About wildcards" title={WILDCARD_TIP}
+        className="btn-wildcard-hint grid size-4 place-items-center rounded-full text-[10px] leading-none text-muted transition hover:bg-canvas hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        ⓘ
+      </button>
+      {open && (
+        <span id={id} role="note"
+          className="wc-wildcard-popover absolute left-0 top-5 z-20 w-60 rounded-xl border border-hairline bg-surface p-2.5 text-[11px] leading-snug shadow-glow">
+          <span className="wc-wildcard-popover-title mb-1.5 block font-medium text-ink">Wildcards, resolved per card</span>
+          {WILDCARDS.map((w) => (
+            <span key={w} className="wc-wildcard-row mb-1 flex flex-col text-muted last:mb-0">
+              <code className="wc-wildcard-token self-start rounded bg-canvas px-1 py-px text-ink">{w}</code>
+              <span className="wc-wildcard-meaning">{WILDCARD_MEANINGS[w]}</span>
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
 
 /** 16x16 align-left/center/right glyphs: three horizontal bars, rounded caps. */
 function AlignIcon({ align }: { align: 'left' | 'center' | 'right' }) {
@@ -50,15 +88,6 @@ export function TextFieldControls({ label, value, base, onChange, placeholder, w
             { value: 'center', label: <AlignIcon align="center" />, ariaLabel: 'Center align' },
             { value: 'right', label: <AlignIcon align="right" />, ariaLabel: 'Right align' },
           ]} />
-        {wildcards && (
-          // `basis-full` so the hint wraps onto its own line inside the
-          // flex row, staying in the grid's second column under the input.
-          <p className="wc-text-field-hint basis-full text-[10px] leading-tight text-muted" title={WILDCARD_TIP}>
-            Wildcards: {WILDCARDS.map((w, i) => (
-              <span key={w}>{i > 0 && ' '}<code className="wc-wildcard-token rounded bg-canvas px-1 py-px">{w}</code></span>
-            ))}
-          </p>
-        )}
       </div>
     </div>
   );

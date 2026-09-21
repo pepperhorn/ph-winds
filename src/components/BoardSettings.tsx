@@ -1,7 +1,7 @@
 import type { BoardMeta, TextKey } from '@/state/types';
 import { getInstrument } from '@/music/instruments';
 import { DiagramStyleControls } from './DiagramStyleControls';
-import { TextFieldControls } from './TextFieldControls';
+import { TextFieldControls, WildcardHint } from './TextFieldControls';
 import { Section } from './ui';
 
 export function BoardSettings({ meta, onMeta }: { meta: BoardMeta; onMeta(p: Partial<BoardMeta>): void }) {
@@ -20,7 +20,9 @@ export function BoardSettings({ meta, onMeta }: { meta: BoardMeta; onMeta(p: Par
           <TextFieldControls label="Title" value={meta.title} base={meta.title} onChange={(p) => onMeta({ title: { ...meta.title, ...p } })} placeholder="Board title" wildcards={false} />
           <TextFieldControls label="Subtitle" value={meta.subtitle} base={meta.subtitle} onChange={(p) => onMeta({ subtitle: { ...meta.subtitle, ...p } })} placeholder="Subtitle" wildcards={false} />
           <TextFieldControls label="Footer" value={meta.footer} base={meta.footer} onChange={(p) => onMeta({ footer: { ...meta.footer, ...p } })} placeholder="Footer" wildcards={false} />
-          <p className="wc-card-defaults-heading pt-2 text-xs font-medium text-ink">Card defaults</p>
+          <p className="wc-card-defaults-heading flex items-center gap-1.5 pt-2 text-xs font-medium text-ink">
+            Card defaults<WildcardHint />
+          </p>
           <TextFieldControls label="Heading" value={meta.cardText.heading} base={meta.cardText.heading} onChange={(p) => setCardText('heading', p)} placeholder="Note name" />
           <TextFieldControls label="Subtitle" value={meta.cardText.subtitle} base={meta.cardText.subtitle} onChange={(p) => setCardText('subtitle', p)} placeholder="Sounding pitch" />
           <TextFieldControls label="Footer" value={meta.cardText.footer} base={meta.cardText.footer} onChange={(p) => setCardText('footer', p)} />

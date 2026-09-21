@@ -6,7 +6,7 @@ import { toMidi } from '@/music/pitch';
 import { resolveStyle } from '@/state/resolve';
 import { WindCard } from './WindCard';
 import { FingeringView } from './FingeringView';
-import { TextFieldControls } from './TextFieldControls';
+import { TextFieldControls, WildcardHint } from './TextFieldControls';
 import { Button, onRovingKeyDown, rovingTabIndex, Segmented, Slider } from './ui';
 import { INSTRUMENT_ICONS } from './instrumentIcons';
 
@@ -137,6 +137,9 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
           </div>
         )}
         <div className="wc-builder-text space-y-2">
+          <p className="wc-builder-text-heading flex items-center gap-1.5 text-xs font-medium text-ink">
+            Card text<WildcardHint />
+          </p>
           <TextFieldControls label="Heading" value={draft?.text?.heading ?? {}} base={meta.cardText.heading}
             placeholder={draft ? autoHeading(draft.pitch) : ''} onChange={(p) => setText('heading', p)} />
           <TextFieldControls label="Subtitle" value={draft?.text?.subtitle ?? {}} base={meta.cardText.subtitle}
