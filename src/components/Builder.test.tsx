@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Builder } from './Builder';
 import { createBoard, newCardDraft } from '@/state/defaults';
@@ -57,7 +57,10 @@ describe('Builder', () => {
     expect(onMeta).toHaveBeenCalledWith({ pitchMode: 'concert' });
     await userEvent.click(screen.getByRole('radio', { name: 'Handwritten' }));
     expect(onMeta).toHaveBeenCalledWith({ musicFont: 'petaluma' });
-    await userEvent.click(screen.getByRole('radio', { name: 'Sideways' }));
+    // "Horizontal" also labels the per-card Card layout control, so scope this
+    // to the board-level Orientation radiogroup rather than querying globally.
+    const orientation = screen.getByRole('radiogroup', { name: 'Orientation:' });
+    await userEvent.click(within(orientation).getByRole('radio', { name: 'Horizontal' }));
     expect(onMeta).toHaveBeenCalledWith({ diagramOrient: 'horizontal' });
     await userEvent.click(screen.getByRole('radio', { name: '2' }));
     expect(onMeta).toHaveBeenCalledWith({ columns: 2 });
