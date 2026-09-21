@@ -37,7 +37,7 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
     <section className="wc-builder space-y-6 rounded-3xl border border-hairline bg-surface/80 p-6 shadow-glow backdrop-blur">
       <div className="wc-builder-settings-main flex flex-col gap-3 rounded-2xl border border-hairline bg-canvas p-4"
         role="group" aria-label="Board settings">
-        <div className="wc-settings-group wc-settings-group-instrument flex flex-col items-center gap-1" role="group" aria-label="Instrument">
+        <div className="wc-settings-group wc-settings-group-instrument flex flex-col items-center gap-1">
         <div role="radiogroup" aria-label="Instrument" className="wc-instrument-picker flex flex-wrap justify-center gap-2">
           {listInstruments().map((i) => {
             const selected = meta.instrument === i.id;
