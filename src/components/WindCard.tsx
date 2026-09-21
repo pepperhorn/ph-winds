@@ -1,7 +1,7 @@
 import type { BoardMeta, FingeringCard, TextField } from '@/state/types';
 import { resolveCardText, resolveStyle } from '@/state/resolve';
 import { fingeringsFor, getInstrument, type InstrumentInfo } from '@/music/instruments';
-import { formatPitchPair, toMidi } from '@/music/pitch';
+import { toMidi } from '@/music/pitch';
 import { StaffNote } from '@/notation/StaffNote';
 import { FingeringView } from './FingeringView';
 
@@ -39,11 +39,13 @@ export function WindCard({ card, meta, onPlay, showPlay = 'hover', loadingPlay, 
   const unavailable = options.length === 0;
 
   if (unavailable) {
-    // Same enharmonic pairing every live card gets (formatPitchPair), and the
-    // user's own heading override when they set one — falling back to the
-    // pitch pair otherwise — with the "not available on …" line always
-    // underneath, never in its place.
-    const heading = card.text?.heading?.text || formatPitchPair(card.pitch);
+    // One heading rule for the whole board: the same `resolveCardText` a live
+    // card uses, so the card's own override still wins, the board-level
+    // default is honoured, and an untouched card gets the same auto label
+    // (register name and all) as the cards beside it. Only `show` is ignored
+    // — the heading is this card's sole identifier — and the "not available
+    // on …" line always sits underneath it, never in its place.
+    const heading = resolveCardText(card, meta).heading.text;
     return (
       <div data-orientation={card.orientation} data-display={card.display} data-export-hide
         className={`wc-card wc-card--unavailable relative flex flex-col items-center gap-1.5 rounded-2xl border border-hairline bg-surface p-4 opacity-[0.55] ${className}`}>
