@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import WindCardsApp from './WindCardsApp';
+import { useRegisters } from '@/test/registers';
 
 vi.mock('@/notation/StaffNote', () => ({ StaffNote: () => <div data-testid="staff" /> }));
 vi.mock('@/notation/verovio', () => ({
@@ -11,6 +12,12 @@ vi.mock('@/notation/verovio', () => ({
 }));
 vi.mock('@/audio/playback', () => ({ playNote: vi.fn(() => Promise.resolve()), releaseVoicesExcept: vi.fn(), isVoiceLoaded: () => true }));
 
+// Fixture register bands (C4 -> "Mid", D5 -> "Top") for the default card
+// heading, so these end-to-end cases do not go red when the library
+// re-anchors its real boundaries. `registers.test.ts` covers the shipped data.
+useRegisters('saxophone');
+useRegisters('flute');
+
 describe('WindCardsApp', () => {
   beforeEach(() => localStorage.clear());
   it('picks a note on the piano, adds a card, persists it', async () => {
@@ -19,31 +26,31 @@ describe('WindCardsApp', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add to board' }));
     const board = document.getElementById('wc-board-export')!;
     // The default card heading is the register-aware name for the written pitch.
-    expect(within(board).getByText('Middle C')).toBeInTheDocument();
+    expect(within(board).getByText('Mid C')).toBeInTheDocument();
     unmount();
     render(<WindCardsApp />);
-    expect(within(document.getElementById('wc-board-export')!).getByText('Middle C')).toBeInTheDocument();
+    expect(within(document.getElementById('wc-board-export')!).getByText('Mid C')).toBeInTheDocument();
   });
   it('concert mode maps key clicks to written pitch', async () => {
     render(<WindCardsApp />);   // default: alto sax
     await userEvent.click(screen.getByRole('radio', { name: 'Concert Pitch (Piano)' }));
     await userEvent.click(screen.getByRole('button', { name: 'E♭4' }));
-    expect(within(document.querySelector('.wc-builder-preview')!).getByText('Middle C')).toBeInTheDocument();
+    expect(within(document.querySelector('.wc-builder-preview')!).getByText('Mid C')).toBeInTheDocument();
   });
   it('switching instrument remaps the board rather than clearing it', async () => {
     render(<WindCardsApp />);   // default: alto sax
     await userEvent.click(screen.getByRole('button', { name: 'C5' }));
     await userEvent.click(screen.getByRole('button', { name: 'Add to board' }));
     const board = document.getElementById('wc-board-export')!;
-    expect(within(board).getByText('Middle C')).toBeInTheDocument();
+    expect(within(board).getByText('Mid C')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('radio', { name: 'Flute (Boehm, C foot)' }));
     // alto sax (-9) C5 sounds Eb4 (midi 63); flute (0) written at that midi
     // is spelled D#4 by the flute fingering chart (its own spelling wins), and
-    // sits in the flute's low register.
+    // sits in the flute's lower fixture band.
     expect(board.querySelectorAll('.wc-card')).toHaveLength(1);
-    expect(within(board).queryByText('Middle C')).toBeNull();
-    expect(within(board).getByText('Low E♭ / D♯')).toBeInTheDocument();
+    expect(within(board).queryByText('Mid C')).toBeNull();
+    expect(within(board).getByText('Mid E♭ / D♯')).toBeInTheDocument();
   });
 
   it('adds a text card with a placeholder heading, edits it, and never plays it', async () => {

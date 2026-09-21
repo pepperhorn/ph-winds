@@ -13,9 +13,10 @@ declare module '@pepperhorn/fingering-components' {
    * runs to the top of the instrument. The first band's `from` is the
    * instrument's lowest written note.
    */
-  // `name` is one of "Low" | "Middle" | "High" | "Altissimo" today, but stays
-  // `string`: TypeScript resolves these instrument JSON files directly (they
-  // widen to `string`), so a union here fails to assign.
+  // `name` stays `string`, never a union of today's band names: the library
+  // adds names and re-anchors boundaries, and TypeScript resolves these
+  // instrument JSON files directly (they widen to `string`) so a union here
+  // fails to assign anyway. Nothing in this app may assume the name set.
   export interface Register { from: string; name: string }
   export interface Layout {
     id: string; name: string; family: string; transpose: number;

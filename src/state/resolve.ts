@@ -5,12 +5,16 @@ import { semitones } from '@/music/instruments';
 import { CARD_TEXT_TEMPLATES } from './defaults';
 
 /**
- * Pitch-only auto labels. `resolveCardText` resolves the wildcard templates
- * instead; these stay for callers that only have a pitch and no board context
- * (the Builder's input placeholders).
+ * The subtitle a card gets when its slot is left blank, for the Builder's
+ * placeholder. It has to agree with what `resolveCardText` produces from
+ * `CARD_TEXT_TEMPLATES.subtitle` — a placeholder promises "this is what you
+ * get if you leave this empty" — and it does: same pitch pair, same
+ * transposition, and empty on a non-transposing instrument either way.
+ *
+ * There is deliberately no `autoHeading` twin. The heading template resolves
+ * `{noteName}`, which needs the board's instrument and horn, so the Builder
+ * asks `resolveCardText` for it rather than guessing from the pitch alone.
  */
-export const autoHeading = (p: Pitch) => formatPitchPair(p);
-
 export const autoSubtitle = (p: Pitch, semis: number) =>
   semis === 0 ? '' : `Concert Pitch: ${formatPitchPair(transposePitch(p, semis))}`;
 
@@ -30,17 +34,23 @@ export const WILDCARDS = ['{noteName}', '{transposedPitch}', '{concertPitch}'] a
  *
  * `{concertPitch}` on a non-transposing instrument is simply the same pitch —
  * it never resolves to empty.
+ *
+ * Each value is a thunk: this runs for every text field of every card on the
+ * board, and `{noteName}` re-reads and re-parses the instrument's register
+ * bands. Text with no token — or only an unknown one — now costs nothing.
  */
 export function applyWildcards(text: string, pitch: Pitch, meta: WildcardContext): string {
   if (!text.includes('{')) return text;
-  const semis = semitones(meta.instrument, meta.horn);
-  const values: Record<string, string> = {
-    noteName: registerName(meta.instrument, meta.horn, pitch),
-    transposedPitch: formatPitchPair(pitch),
-    concertPitch: formatPitchPair(semis === 0 ? pitch : transposePitch(pitch, semis)),
+  const values: Record<string, () => string> = {
+    noteName: () => registerName(meta.instrument, meta.horn, pitch),
+    transposedPitch: () => formatPitchPair(pitch),
+    concertPitch: () => {
+      const semis = semitones(meta.instrument, meta.horn);
+      return formatPitchPair(semis === 0 ? pitch : transposePitch(pitch, semis));
+    },
   };
   return text.replace(/\{(\w+)\}/g, (token, key: string) =>
-    Object.hasOwn(values, key) ? values[key] : token);
+    Object.hasOwn(values, key) ? values[key]() : token);
 }
 
 export function resolveCardText(card: Pick<FingeringCard, 'pitch' | 'text'>, meta: BoardMeta): CardText {

@@ -23,7 +23,7 @@ export const CARD_TEXT_TEMPLATES: Record<TextKey, string> = {
   footer: '',
 };
 
-export const COLOR_PRESETS =['#1c2233', '#6d5dfc', '#2f80ed', '#12a594', '#e5484d', '#f76b15', '#d6409f', '#8e4ec6'];
+export const COLOR_PRESETS = ['#1c2233', '#6d5dfc', '#2f80ed', '#12a594', '#e5484d', '#f76b15', '#d6409f', '#8e4ec6'];
 
 export const DEFAULT_STYLE: DiagramStyle = {
   variants: [],

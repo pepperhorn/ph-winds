@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
 import type { BoardMeta, CardDraft, TextKey } from '@/state/types';
-import { autoHeading, autoSubtitle } from '@/state/resolve';
+import { autoSubtitle, resolveCardText, resolveStyle } from '@/state/resolve';
 import { fingeringsFor, getInstrument, listInstruments, semitones, type InstrumentId } from '@/music/instruments';
 import { toMidi } from '@/music/pitch';
-import { resolveStyle } from '@/state/resolve';
 import { WindCard } from './WindCard';
 import { FingeringView } from './FingeringView';
 import { TextFieldControls, WildcardHint } from './TextFieldControls';
@@ -140,8 +139,13 @@ export function Builder({ draft, meta, onChange, onCommit, onCancelEdit, onPlay,
           <p className="wc-builder-text-heading flex items-center gap-1.5 text-xs font-medium text-ink">
             Card text<WildcardHint />
           </p>
+          {/* The placeholder has to be what the card actually shows when this
+              field is left blank — which is the resolved heading for *this*
+              board (register name and all), not the bare pitch. Resolved from
+              the pitch alone, ignoring `draft.text`, so it keeps showing the
+              default while the user types over it. */}
           <TextFieldControls label="Heading" value={draft?.text?.heading ?? {}} base={meta.cardText.heading}
-            placeholder={draft ? autoHeading(draft.pitch) : ''} onChange={(p) => setText('heading', p)} />
+            placeholder={draft ? resolveCardText({ pitch: draft.pitch }, meta).heading.text : ''} onChange={(p) => setText('heading', p)} />
           <TextFieldControls label="Subtitle" value={draft?.text?.subtitle ?? {}} base={meta.cardText.subtitle}
             placeholder={draft ? autoSubtitle(draft.pitch, semis) : ''} onChange={(p) => setText('subtitle', p)} />
           <TextFieldControls label="Footer" value={draft?.text?.footer ?? {}} base={meta.cardText.footer} onChange={(p) => setText('footer', p)} />

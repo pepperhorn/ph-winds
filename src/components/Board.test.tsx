@@ -4,10 +4,17 @@ import { Board } from './Board';
 import { createBoard, newCardDraft } from '@/state/defaults';
 import { boardReducer } from '@/state/boardReducer';
 import { parsePitch } from '@/music/pitch';
+import { useRegisters } from '@/test/registers';
 import type { CardItem } from '@/state/types';
 import { newTextCardDraft } from '@/state/textCards';
 
 vi.mock('@/notation/StaffNote', () => ({ StaffNote: () => <div data-testid="staff" /> }));
+
+// Fixture register bands (C4 -> "Mid", D5 -> "Top"): the card headings below
+// are the resolved `{noteName}` label, and the library re-anchors its real
+// boundaries. `registers.test.ts` covers the shipped data.
+useRegisters('saxophone');
+useRegisters('flute');
 
 function boardWithCards(): { state: ReturnType<typeof createBoard> } {
   const state = createBoard('saxophone');
@@ -103,7 +110,7 @@ describe('Board', () => {
     expect((container.querySelector('.wc-board-title') as HTMLInputElement).value).toBe('{noteName}');
     expect((container.querySelector('.wc-board-subtitle') as HTMLInputElement).value).toBe('{concertPitch}');
     // Card text: register-aware name from the default template.
-    expect(container.querySelector('.wc-card-heading')?.textContent).toBe('High G');
+    expect(container.querySelector('.wc-card-heading')?.textContent).toBe('Top G');
     expect(container.querySelector('.wc-card-subtitle')?.textContent).toBe('Concert Pitch: B♭4 / A♯4');
   });
 

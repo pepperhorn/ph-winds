@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { TextField } from '@/state/types';
 import { WILDCARDS } from '@/state/resolve';
 import { Segmented } from './ui';
@@ -19,9 +19,35 @@ const WILDCARD_MEANINGS: Record<string, string> = {
 export function WildcardHint({ className = '' }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const id = useId();
+  const root = useRef<HTMLSpanElement>(null);
+
+  // A popover you can only close by hitting the same 4px ⓘ again is a trap.
+  // Escape and a click outside both dismiss it, and Escape puts focus back on
+  // the button it came from. Listeners only exist while it is open.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      setOpen(false);
+      root.current?.querySelector('button')?.focus();
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [open]);
+
   return (
-    <span className={`wc-wildcard-hint relative inline-flex ${className}`}>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls={id}
+    <span ref={root} className={`wc-wildcard-hint relative inline-flex ${className}`}>
+      {/* `aria-controls` only while the popover exists — pointing at an id
+          that is not in the DOM is a dangling reference to a screen reader. */}
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls={open ? id : undefined}
         aria-label="About wildcards" title={WILDCARD_TIP}
         className="btn-wildcard-hint grid size-4 place-items-center rounded-full text-[10px] leading-none text-muted transition hover:bg-canvas hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
         ⓘ

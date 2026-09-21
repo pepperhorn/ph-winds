@@ -58,20 +58,26 @@ describe('TextCardView', () => {
     // `resolveCardText`: the fingering path fills an empty slot from the
     // card's pitch, and the text path has no pitch to fill anything from. It
     // leaves what was typed, and leaves an untyped slot empty.
-    //
-    // NB when PR #8 (`feat/register-wildcards`) lands, `resolveCardText` also
-    // grows `{noteName}`-style substitution. `resolveTextCardText` is a
-    // separate merge loop and must NOT grow it — same reason, no pitch — so
-    // extend this case with a literal-braces assertion then. Asserting that
-    // today would prove nothing: there is no substitution to escape.
     const { container } = render(<TextCardView meta={meta} card={{ id: 't', kind: 'text', scale: 1, text: { heading: { text: 'Warm-ups' } } }} />);
     expect(screen.getByText('Warm-ups')).toBeInTheDocument();
     expect(container.querySelector('.wc-text-card-subtitle')).toBeNull();
 
     // The same board, the same empty slots, on a fingering card: both filled.
+    // The heading is the resolved `{noteName}` label, so it is not asserted
+    // against a literal — the library's band names and boundaries move.
     const fingering = render(<CardView meta={meta} card={{ id: 'a', ...newCardDraft(parsePitch('C5')) }} />);
-    expect(fingering.container.querySelector('.wc-card-heading')?.textContent).toBe('C5');
+    expect(fingering.container.querySelector('.wc-card-heading')?.textContent).toBeTruthy();
     expect(fingering.container.querySelector('.wc-card-subtitle')?.textContent).toMatch(/Concert Pitch/);
+  });
+
+  // The other half of the same rule, now that `resolveCardText` does resolve
+  // `{noteName}` and friends: `resolveTextCardText` is a separate merge loop
+  // and must NOT grow substitution — a text card has no pitch to resolve
+  // against — so a wildcard typed on one stays exactly as typed.
+  it('leaves wildcard tokens literal, having no pitch to resolve them against', () => {
+    render(<TextCardView meta={meta} card={{ id: 't', kind: 'text', scale: 1, text: { heading: { text: '{noteName}' }, subtitle: { text: 'sounds {concertPitch}' } } }} />);
+    expect(screen.getByText('{noteName}')).toBeInTheDocument();
+    expect(screen.getByText('sounds {concertPitch}')).toBeInTheDocument();
   });
 
   it('a card with no art and no text renders a visible placeholder, not an invisible box', () => {

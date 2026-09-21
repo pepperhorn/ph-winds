@@ -4,15 +4,20 @@ import userEvent from '@testing-library/user-event';
 import { WindCard } from './WindCard';
 import { createBoard, newCardDraft } from '@/state/defaults';
 import { parsePitch } from '@/music/pitch';
+import { useRegisters } from '@/test/registers';
 
 vi.mock('@/notation/StaffNote', () => ({ StaffNote: () => <div data-testid="staff" /> }));
 
 const meta = { ...createBoard('saxophone').meta, horn: 'alto' };
 
+// Fixture register bands (C4 -> "Mid", D5 -> "Top"), so the headings below
+// pin card *behaviour* rather than the library's current boundaries.
+useRegisters('saxophone');
+
 describe('WindCard', () => {
   it('shows heading, subtitle, diagram and staff by default', () => {
     const { container } = render(<WindCard card={newCardDraft(parsePitch('C5'))} meta={meta} />);
-    expect(screen.getByText('Middle C')).toBeInTheDocument();
+    expect(screen.getByText('Mid C')).toBeInTheDocument();
     expect(screen.getByText('Concert Pitch: E♭4 / D♯4')).toBeInTheDocument();
     expect(container.querySelector('.wc-fingering svg')).not.toBeNull();
     expect(screen.getByTestId('staff')).toBeInTheDocument();
@@ -57,6 +62,25 @@ describe('WindCard', () => {
     render(<WindCard card={draft} meta={meta} />);
     expect(screen.getByText('My low C')).toBeInTheDocument();
     expect(screen.queryByText('C2')).toBeNull();
+    expect(screen.getByText('not available on E♭ alto Saxophone')).toBeInTheDocument();
+  });
+  // An unavailable card gets its heading from the same rule as a live one —
+  // `resolveCardText` — so a board can never show two heading formats side by
+  // side. Nothing pinned this before, which is how it drifted.
+  it('applies the board-level card-text heading template to an unavailable card', () => {
+    const m = { ...meta, cardText: { ...meta.cardText, heading: { ...meta.cardText.heading, text: 'Note: {transposedPitch}' } } };
+    render(<WindCard card={newCardDraft(parsePitch('C2'))} meta={m} />);
+    expect(screen.getByText('Note: C2')).toBeInTheDocument();
+    expect(screen.getByText('not available on E♭ alto Saxophone')).toBeInTheDocument();
+  });
+  it('names an unavailable card by register, exactly as a live card would', () => {
+    // Written G7 is off the top of the alto-sax chart but still sits inside a
+    // band, so the heading is the register-aware name a live card would get,
+    // not the bare pitch. (C2, below every band, keeps falling back to the
+    // pitch pair — the case above.)
+    render(<WindCard card={newCardDraft(parsePitch('G7'))} meta={meta} />);
+    expect(screen.getByText('Top G')).toBeInTheDocument();
+    expect(screen.queryByText('G7')).toBeNull();
     expect(screen.getByText('not available on E♭ alto Saxophone')).toBeInTheDocument();
   });
   it('uses the short instrument name (no parenthetical) for a horn-less instrument', () => {
