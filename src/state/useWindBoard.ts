@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import { boardReducer, type BoardAction } from './boardReducer';
 import { createBoard } from './defaults';
 import { localStorageAdapter, type StorageAdapter } from './storage';
-import type { BoardMeta, BoardState, CardDraft } from './types';
+import type { BoardMeta, BoardState, CardDraft, CardPatch, TextCardDraft } from './types';
+import { newTextCardDraft } from './textCards';
 
 const uid = () => crypto.randomUUID();
 
@@ -11,12 +12,13 @@ export function useWindBoard({ storage }: { storage?: StorageAdapter } = {}) {
   const [state, dispatch] = useReducer(boardReducer, undefined, () => store.load() ?? createBoard());
   useEffect(() => { store.save(state); }, [store, state]);
 
-  const addCard = useCallback((d: CardDraft) => { const id = uid(); dispatch({ type: 'add', card: { ...d, id } }); return id; }, []);
+  const addCard = useCallback((d: CardDraft | TextCardDraft) => { const id = uid(); dispatch({ type: 'add', card: { ...d, id } }); return id; }, []);
   return {
     state,
     dispatch: dispatch as (a: BoardAction) => void,
     addCard,
-    updateCard: useCallback((id: string, patch: Partial<CardDraft>) => dispatch({ type: 'update', id, patch }), []),
+    addTextCard: useCallback(() => { const id = uid(); dispatch({ type: 'add', card: { ...newTextCardDraft(), id } }); return id; }, []),
+    updateCard: useCallback((id: string, patch: CardPatch) => dispatch({ type: 'update', id, patch }), []),
     removeCard: useCallback((id: string) => dispatch({ type: 'remove', id }), []),
     duplicateCard: useCallback((id: string) => dispatch({ type: 'duplicate', id, newId: uid() }), []),
     reorder: useCallback((fromId: string, toIndex: number) => dispatch({ type: 'reorder', fromId, toIndex }), []),

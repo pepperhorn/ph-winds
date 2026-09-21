@@ -5,6 +5,7 @@ import { createBoard, newCardDraft } from '@/state/defaults';
 import { boardReducer } from '@/state/boardReducer';
 import { parsePitch } from '@/music/pitch';
 import type { CardItem } from '@/state/types';
+import { newTextCardDraft } from '@/state/textCards';
 
 vi.mock('@/notation/StaffNote', () => ({ StaffNote: () => <div data-testid="staff" /> }));
 
@@ -273,5 +274,74 @@ describe('Board drop indicator', () => {
     // `exportBoardImage`'s html-to-image filter drops any node carrying this.
     expect(el.hasAttribute('data-export-hide')).toBe(true);
     expect(el.getAttribute('aria-hidden')).toBe('true');
+  });
+});
+
+describe('Board with text cards', () => {
+  const mixed = () => {
+    const state = createBoard('saxophone');
+    const items: CardItem[] = [
+      { ...newCardDraft(parsePitch('C5')), id: 'a' },
+      { id: 't', ...newTextCardDraft('Warm-ups') },
+      { ...newCardDraft(parsePitch('D5')), id: 'b' },
+    ];
+    return { ...state, items };
+  };
+  const renderBoard = (state: ReturnType<typeof mixed>, extra: Record<string, unknown> = {}) => render(
+    <Board state={state} onReorder={noop} onEdit={noop} onDuplicate={noop} onRemove={noop} onMeta={noop} onPlay={noop} {...extra} />
+  );
+
+  it('renders a text card in the grid with the same toolbar as a fingering card', () => {
+    const { container } = renderBoard(mixed());
+    const items = container.querySelectorAll('.wc-board-item');
+    expect(items).toHaveLength(3);
+    const textItem = items[1] as HTMLElement;
+    expect(textItem.querySelector('.wc-text-card')).not.toBeNull();
+    expect(textItem.textContent).toContain('Warm-ups');
+    for (const cls of ['.wc-card-drag-handle', '.wc-card-edit-btn', '.wc-card-duplicate-btn', '.wc-card-delete-btn']) {
+      expect(textItem.querySelector(cls)).not.toBeNull();
+    }
+    // The toolbar is chrome, not content.
+    expect((textItem.querySelector('.wc-card-toolbar') as HTMLElement).hasAttribute('data-export-hide')).toBe(true);
+  });
+
+  it('never marks a text card unavailable, whatever the instrument', () => {
+    // Trombone has no fingering for most of this board, but a text card has no
+    // pitch for the question to even apply to.
+    const state = { ...mixed(), meta: { ...mixed().meta, instrument: 'trombone', horn: undefined } };
+    const { container } = renderBoard(state);
+    const items = container.querySelectorAll('.wc-board-item');
+    expect((items[1] as HTMLElement).hasAttribute('data-export-hide')).toBe(false);
+  });
+
+  it('drags and reorders a text card like any other card, drop indicator included', () => {
+    const onReorder = vi.fn();
+    const { container } = renderBoard(mixed(), { onReorder });
+    const items = Array.from(container.querySelectorAll('.wc-board-item')) as HTMLElement[];
+    const textItem = items[1];
+    const handle = textItem.querySelector('.wc-card-drag-handle') as HTMLElement;
+
+    fireEvent.pointerDown(handle);
+    expect(textItem.getAttribute('draggable')).toBe('true');
+    fireEvent.dragStart(textItem, { dataTransfer: { setData: vi.fn(), effectAllowed: '' } });
+
+    const rect = items[0].getBoundingClientRect();
+    const opts = { clientX: rect.left + rect.width / 4, clientY: rect.top + 10 };
+    fireEvent.dragOver(items[0], { ...opts, dataTransfer: { setData: vi.fn() } });
+    expect(container.querySelector('.wc-drop-indicator')).not.toBeNull();
+
+    const drop = new Event('drop', { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, 'dataTransfer', { value: { setData: vi.fn(), getData: vi.fn() } });
+    Object.defineProperty(drop, 'clientX', { value: opts.clientX });
+    Object.defineProperty(drop, 'clientY', { value: opts.clientY });
+    items[0].dispatchEvent(drop);
+    expect(onReorder).toHaveBeenCalledWith('t', 0);
+  });
+
+  it('takes the selection ring like any other card', () => {
+    const { container } = renderBoard(mixed(), { selectedId: 't' });
+    const items = container.querySelectorAll('.wc-board-item');
+    expect((items[1] as HTMLElement).className).toContain('ring-accent');
+    expect((items[0] as HTMLElement).className).not.toContain('ring-accent');
   });
 });

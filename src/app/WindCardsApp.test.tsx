@@ -43,4 +43,52 @@ describe('WindCardsApp', () => {
     expect(within(board).queryByText('C5')).toBeNull();
     expect(within(board).getByText('E♭4 / D♯4')).toBeInTheDocument();
   });
+
+  it('adds a text card with a placeholder heading, edits it, and never plays it', async () => {
+    const { playNote } = await import('@/audio/playback');
+    render(<WindCardsApp />);
+    await userEvent.click(screen.getByRole('button', { name: '+ Add text card' }));
+
+    const board = document.getElementById('wc-board-export')!;
+    const textCard = board.querySelector('.wc-text-card') as HTMLElement;
+    expect(textCard).not.toBeNull();
+    // Never created empty: an empty text card is an invisible box.
+    expect(textCard.textContent).toContain('Section');
+    // No fingering, no staff, and nothing to press play on.
+    expect(textCard.querySelector('.wc-fingering')).toBeNull();
+    expect(within(textCard).queryByRole('button', { name: 'Play voice' })).toBeNull();
+
+    // The new card is selected, so its panel is open.
+    const panel = document.querySelector('.wc-text-card-panel') as HTMLElement;
+    const heading = within(panel).getByLabelText('Heading text') as HTMLInputElement;
+    expect(heading.value).toBe('Section');
+    await userEvent.clear(heading);
+    await userEvent.type(heading, 'Warm-ups');
+    expect(board.querySelector('.wc-text-card')!.textContent).toContain('Warm-ups');
+
+    // An icon, then the same icon again to clear it.
+    const iconBtn = panel.querySelector('.wc-icon-option') as HTMLElement;
+    await userEvent.click(iconBtn);
+    expect(board.querySelector('.wc-text-card-icon')).not.toBeNull();
+    await userEvent.click(iconBtn);
+    expect(board.querySelector('.wc-text-card-icon')).toBeNull();
+
+    expect(playNote).not.toHaveBeenCalled();
+  });
+
+  it('keeps a text card through an instrument switch, and persists it', async () => {
+    const { unmount } = render(<WindCardsApp />);
+    await userEvent.click(screen.getByRole('button', { name: 'C5' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add to board' }));
+    await userEvent.click(screen.getByRole('button', { name: '+ Add text card' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Flute (Boehm, C foot)' }));
+
+    const board = document.getElementById('wc-board-export')!;
+    expect(board.querySelectorAll('.wc-board-item')).toHaveLength(2);
+    expect(board.querySelector('.wc-text-card')!.textContent).toContain('Section');
+
+    unmount();
+    render(<WindCardsApp />);
+    expect(document.getElementById('wc-board-export')!.querySelector('.wc-text-card')!.textContent).toContain('Section');
+  });
 });

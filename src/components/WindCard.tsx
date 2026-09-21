@@ -1,4 +1,4 @@
-import type { BoardMeta, CardItem, TextField } from '@/state/types';
+import type { BoardMeta, FingeringCard, TextField } from '@/state/types';
 import { resolveCardText, resolveStyle } from '@/state/resolve';
 import { fingeringsFor, getInstrument, type InstrumentInfo } from '@/music/instruments';
 import { formatPitchPair, toMidi } from '@/music/pitch';
@@ -25,7 +25,7 @@ function unavailableLabel(info: InstrumentInfo, hornId?: string): string {
 }
 
 export interface WindCardProps {
-  card: Pick<CardItem, 'pitch' | 'fingeringIndex' | 'display' | 'orientation' | 'scale' | 'text' | 'style'>;
+  card: Pick<FingeringCard, 'pitch' | 'fingeringIndex' | 'display' | 'orientation' | 'scale' | 'text' | 'style'>;
   meta: BoardMeta;
   onPlay?: (which: 'voice' | 'piano') => void;
   showPlay?: 'hover' | 'always';
