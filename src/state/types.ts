@@ -27,11 +27,20 @@ export interface DiagramStyle {
 }
 
 /** One board-level MusicXML score, engraved above the card grid. */
+export type ScoreLabelSize = 'S' | 'M' | 'L' | 'XL';
+
 export interface GrandStaff {
   musicXml: string;
   fileName: string;
   /** CSS display scale: 0.5 = 50%, 2 = 200%. */
   scale: number;
+  hideEmptyStaves?: boolean;
+  showNoteNames?: boolean;
+  noteNameSize?: ScoreLabelSize;
+  showCounts?: boolean;
+  countSize?: ScoreLabelSize;
+  /** Treat the upload as concert pitch and engrave it for the selected instrument/horn. */
+  transposeForInstrument?: boolean;
 }
 
 /**

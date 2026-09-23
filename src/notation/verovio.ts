@@ -298,6 +298,8 @@ export interface RenderMeiOptions {
   font?: VerovioFont;
   /** Verovio `scale` (percent). Larger = bigger engraving. */
   scale?: number;
+  /** Chromatic semitones applied by Verovio to notes and key signatures. */
+  transpose?: number;
 }
 
 // The render-options object below is constant except for `font`/`scale`, and
@@ -308,12 +310,12 @@ export interface RenderMeiOptions {
 // replaces (the existing `fontAddCustom`-only calls from `ensureFontRegistered`
 // already relied on that), so skipping this call never drops a previously
 // applied option.
-let appliedRenderOptions: { font: VerovioFont; scale: number } | null = null;
+let appliedRenderOptions: { font: VerovioFont; scale: number; transpose: number } | null = null;
 
 /** Render an MEI document to a single-system SVG string. */
 export async function renderMeiToSvg(
   mei: string,
-  { font = "Bravura", scale = 40 }: RenderMeiOptions = {},
+  { font = "Bravura", scale = 40, transpose = 0 }: RenderMeiOptions = {},
 ): Promise<string> {
   // One retry, and only around the toolkit: a background prefetch now starts
   // the shared attempt ~1 s into every page load, so a staff that mounts inside
@@ -351,10 +353,13 @@ export async function renderMeiToSvg(
       }
     }
   }
-  if (appliedRenderOptions?.font !== effectiveFont || appliedRenderOptions?.scale !== scale) {
+  if (appliedRenderOptions?.font !== effectiveFont || appliedRenderOptions?.scale !== scale || appliedRenderOptions.transpose !== transpose) {
     tk.setOptions({
       font: effectiveFont,
       scale,
+      // An empty value explicitly resets a transposition used by a previous
+      // grand-staff render before a regular single-note card is engraved.
+      transpose: transpose === 0 ? "" : String(transpose),
       adjustPageWidth: true,
       adjustPageHeight: true,
       breaks: "none",
@@ -367,7 +372,7 @@ export async function renderMeiToSvg(
       svgViewBox: true,
       svgRemoveXlink: true,
     });
-    appliedRenderOptions = { font: effectiveFont, scale };
+    appliedRenderOptions = { font: effectiveFont, scale, transpose };
   }
   if (!tk.loadData(mei)) {
     throw new Error("Verovio failed to load notation data");
@@ -389,6 +394,7 @@ import type { Pitch } from "@/music/pitch";
 import type { MusicFont } from "@/state/types";
 import { pitchKey } from "@/music/pitch";
 import { buildMei } from "./mei";
+import { prepareMusicXml, type ScoreTransformOptions } from "./scoreTransform";
 
 /** Verovio `scale` (percent) tuned for a one-note staff at ~150px wide. */
 const STAFF_SCALE = 40;
@@ -398,7 +404,7 @@ export const musicFontToVerovioFont = (font: MusicFont): VerovioFont =>
   font === "petaluma" ? "Petaluma" : "Bravura";
 
 const svgCache = new Map<string, Promise<string>>();
-let grandStaffCache: { musicXml: string; font: MusicFont; svg: Promise<string> } | null = null;
+let grandStaffCache: { key: string; svg: Promise<string> } | null = null;
 let queue: Promise<unknown> = Promise.resolve();
 
 /** Engrave one note. Serialised through the single toolkit; memoised per pitch/clef/font. */
@@ -420,16 +426,19 @@ export function renderStaffSvg(p: Pitch, clef: "G" | "F", font: MusicFont): Prom
 }
 
 /** Engrave one uploaded MusicXML score through the same non-reentrant toolkit queue. */
-export function renderMusicXmlSvg(musicXml: string, font: MusicFont): Promise<string> {
-  if (grandStaffCache?.musicXml === musicXml && grandStaffCache.font === font) return grandStaffCache.svg;
-  const svg = queue.then(() => renderMeiToSvg(musicXml, {
+export function renderMusicXmlSvg(musicXml: string, font: MusicFont, options: ScoreTransformOptions = {}): Promise<string> {
+  const key = `${musicXml}|${font}|${JSON.stringify(options)}`;
+  if (grandStaffCache?.key === key) return grandStaffCache.svg;
+  const prepared = prepareMusicXml(musicXml, options);
+  const svg = queue.then(() => renderMeiToSvg(prepared, {
     font: musicFontToVerovioFont(font),
     scale: STAFF_SCALE,
+    transpose: options.transposeSemitones,
   }));
   svg.catch(() => {
     if (grandStaffCache?.svg === svg) grandStaffCache = null;
   });
-  grandStaffCache = { musicXml, font, svg };
+  grandStaffCache = { key, svg };
   queue = svg.catch(() => undefined);
   return svg;
 }

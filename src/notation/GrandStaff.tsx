@@ -1,21 +1,23 @@
 import { useEffect, useState } from 'react';
 import type { MusicFont } from '@/state/types';
 import { renderMusicXmlSvg } from './verovio';
+import type { ScoreTransformOptions } from './scoreTransform';
 
-export function GrandStaff({ musicXml, font }: { musicXml: string; font: MusicFont }) {
+export function GrandStaff({ musicXml, font, options }: { musicXml: string; font: MusicFont; options?: ScoreTransformOptions }) {
   const [svg, setSvg] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const optionsKey = JSON.stringify(options ?? {});
 
   useEffect(() => {
     let live = true;
     setSvg(null);
     setFailed(false);
-    renderMusicXmlSvg(musicXml, font).then(
+    renderMusicXmlSvg(musicXml, font, options).then(
       (value) => live && setSvg(value),
       () => live && setFailed(true),
     );
     return () => { live = false; };
-  }, [musicXml, font]);
+  }, [musicXml, font, optionsKey]);
 
   if (failed) return <p role="alert" className="wc-grand-staff wc-grand-staff--error py-6 text-center text-xs text-red-500">MusicXML could not be rendered.</p>;
   if (!svg) {

@@ -35,6 +35,10 @@ describe('Board', () => {
       musicXml: '<score-partwise version="4.0"><part-list/></score-partwise>',
       fileName: 'duet.musicxml',
       scale: 1.3,
+      showNoteNames: true,
+      noteNameSize: 'XL',
+      showCounts: true,
+      countSize: 'L',
     };
     const onMeta = vi.fn();
     const { container, getByRole, getByTestId } = render(
@@ -49,6 +53,13 @@ describe('Board', () => {
 
     fireEvent.change(getByRole('slider'), { target: { value: '1.5' } });
     expect(onMeta).toHaveBeenCalledWith({ grandStaff: { ...state.meta.grandStaff, scale: 1.5 } });
+
+    fireEvent.click(getByRole('checkbox', { name: 'Hide empty staves' }));
+    expect(onMeta).toHaveBeenCalledWith({ grandStaff: { ...state.meta.grandStaff, hideEmptyStaves: true } });
+    fireEvent.change(getByRole('combobox', { name: 'Note names size' }), { target: { value: 'M' } });
+    expect(onMeta).toHaveBeenCalledWith({ grandStaff: { ...state.meta.grandStaff, noteNameSize: 'M' } });
+    fireEvent.click(getByRole('checkbox', { name: /Transpose from concert pitch/ }));
+    expect(onMeta).toHaveBeenCalledWith({ grandStaff: { ...state.meta.grandStaff, transposeForInstrument: true } });
   });
 
   it('prevents the default browser action on drop', () => {

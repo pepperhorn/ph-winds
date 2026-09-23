@@ -42,9 +42,30 @@ describe('io', () => {
       musicXml: '<score-partwise version="4.0"><part-list/></score-partwise>',
       fileName: 'warm-up.musicxml',
       scale: 1.4,
+      hideEmptyStaves: true,
+      showNoteNames: true,
+      noteNameSize: 'XL',
+      showCounts: true,
+      countSize: 'L',
+      transposeForInstrument: true,
     };
     const r = importBoardJson(exportBoardJson(s));
     expect(r.ok && r.state.meta.grandStaff).toEqual(s.meta.grandStaff);
+  });
+
+  it('drops invalid grand-staff option values while retaining valid checkboxes', () => {
+    const s = createBoard('flute') as any;
+    s.meta.grandStaff = {
+      musicXml: '<score-partwise version="4.0"><part-list/></score-partwise>',
+      fileName: 'score.musicxml', scale: 1,
+      hideEmptyStaves: 'yes', showNoteNames: true, noteNameSize: 'XXL',
+      showCounts: true, countSize: 'S', transposeForInstrument: 1,
+    };
+    const r = importBoardJson(JSON.stringify(s));
+    expect(r.ok && r.state.meta.grandStaff).toMatchObject({ showNoteNames: true, showCounts: true, countSize: 'S' });
+    expect(r.ok && r.state.meta.grandStaff?.hideEmptyStaves).toBeUndefined();
+    expect(r.ok && r.state.meta.grandStaff?.noteNameSize).toBeUndefined();
+    expect(r.ok && r.state.meta.grandStaff?.transposeForInstrument).toBeUndefined();
   });
 
   it('drops invalid MusicXML and defaults an invalid independent score scale', () => {

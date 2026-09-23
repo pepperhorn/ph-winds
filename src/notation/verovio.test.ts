@@ -80,6 +80,14 @@ describe('MusicXML rendering', () => {
     const xml = '<score-partwise version="4.0"><part-list/></score-partwise>';
     await expect(renderMusicXmlSvg(xml, 'bravura')).resolves.toBe('<svg/>');
     await pendingRenders();
-    expect(fakeToolkit.loadData).toHaveBeenLastCalledWith(xml);
+    expect((fakeToolkit.loadData.mock.calls as unknown[][]).at(-1)?.[0]).toContain('<score-partwise');
+  });
+
+  it('passes score transposition to Verovio so notation and key signatures move together', async () => {
+    const xml = '<score-partwise version="4.0"><part-list/></score-partwise>';
+    await renderMusicXmlSvg(xml, 'bravura', { transposeSemitones: 2 });
+    const renderOptions = fakeToolkit.setOptions.mock.calls.map(([opts]) => opts as Record<string, unknown>)
+      .filter((opts) => 'scale' in opts).at(-1);
+    expect(renderOptions?.transpose).toBe('2');
   });
 });

@@ -13,7 +13,7 @@ const GRAND_STAFF_XML = `<?xml version="1.0" encoding="UTF-8"?>
       </attributes>
       <note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration><voice>1</voice><staff>1</staff></note>
       <backup><duration>4</duration></backup>
-      <note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><voice>2</voice><staff>2</staff></note>
+      <note><rest/><duration>4</duration><voice>2</voice><staff>2</staff></note>
     </measure>
   </part>
 </score-partwise>`;
@@ -30,6 +30,17 @@ test('uploads, renders, sizes and persists one grand staff above the cards', asy
   await expect(panel.getByText('piano.musicxml')).toBeVisible();
   await expect(panel.locator('.wc-grand-staff svg').first()).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.wc-grand-staff-panel + .wc-board-empty')).toBeVisible();
+  await expect(panel.locator('.wc-grand-staff g.staff')).toHaveCount(2);
+
+  await panel.getByRole('checkbox', { name: 'Hide empty staves' }).check();
+  await expect(panel.locator('.wc-grand-staff g.staff')).toHaveCount(1);
+  await panel.getByRole('checkbox', { name: /^Note names/ }).check();
+  await expect(panel.getByRole('combobox', { name: 'Note names size' })).toHaveValue('XL');
+  await panel.getByRole('checkbox', { name: /^Count/ }).check();
+  await expect(panel.getByRole('combobox', { name: 'Count size' })).toHaveValue('L');
+  await panel.getByRole('checkbox', { name: /Transpose from concert pitch/ }).check();
+  await expect(panel.locator('.wc-grand-staff g.verse').filter({ hasText: /A/ }).first()).toBeVisible();
+  await expect(panel.locator('.wc-grand-staff g.verse').filter({ hasText: /1/ }).first()).toBeVisible();
 
   await panel.locator('input[type="range"]').fill('1.5');
   await expect(panel.locator('.wc-grand-staff-sized')).toHaveCSS('width', /.+/);
@@ -38,5 +49,9 @@ test('uploads, renders, sizes and persists one grand staff above the cards', asy
   await page.reload();
   await expect(page.locator('.wc-grand-staff-panel').getByText('piano.musicxml')).toBeVisible();
   await expect(page.locator('.wc-grand-staff-panel .wc-slider-value')).toHaveText('150%');
+  await expect(page.getByRole('checkbox', { name: 'Hide empty staves' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /^Note names/ })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /^Count/ })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /Transpose from concert pitch/ })).toBeChecked();
   await expect(page.locator('.wc-grand-staff svg').first()).toBeVisible({ timeout: 30_000 });
 });
