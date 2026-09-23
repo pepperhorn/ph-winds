@@ -5,6 +5,7 @@ import { MAX_IMAGE_CHARS } from './image';
 import { isTextCard } from './types';
 import { isCardIconId } from '@/components/cardIcons';
 import { listInstruments, getInstrument } from '@/music/instruments';
+import { sanitizeGrandStaff } from './musicXml';
 
 /**
  * An import either fails outright, or succeeds — possibly with a `warning` the
@@ -232,6 +233,8 @@ export function parseBoard(data: unknown): Result {
     style,
     diagramOrient,
   };
+  const grandStaff = sanitizeGrandStaff(m.grandStaff);
+  if (grandStaff) meta.grandStaff = grandStaff;
 
   /**
    * The board-wide picture budget, charged as the cards are read.

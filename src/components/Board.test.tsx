@@ -9,6 +9,7 @@ import type { CardItem } from '@/state/types';
 import { newTextCardDraft } from '@/state/textCards';
 
 vi.mock('@/notation/StaffNote', () => ({ StaffNote: () => <div data-testid="staff" /> }));
+vi.mock('@/notation/GrandStaff', () => ({ GrandStaff: () => <div data-testid="grand-staff" /> }));
 
 // Fixture register bands (C4 -> "Mid", D5 -> "Top"): the card headings below
 // are the resolved `{noteName}` label, and the library re-anchors its real
@@ -28,6 +29,28 @@ function boardWithCards(): { state: ReturnType<typeof createBoard> } {
 const noop = () => {};
 
 describe('Board', () => {
+  it('places the MusicXML upload above the cards and gives an uploaded score its own size control', () => {
+    const { state } = boardWithCards();
+    state.meta.grandStaff = {
+      musicXml: '<score-partwise version="4.0"><part-list/></score-partwise>',
+      fileName: 'duet.musicxml',
+      scale: 1.3,
+    };
+    const onMeta = vi.fn();
+    const { container, getByRole, getByTestId } = render(
+      <Board state={state} onReorder={noop} onEdit={noop} onDuplicate={noop} onRemove={noop} onMeta={onMeta} onPlay={noop} />
+    );
+    const panel = container.querySelector('.wc-grand-staff-panel')!;
+    const grid = container.querySelector('.wc-board-grid')!;
+    expect(panel.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(getByTestId('grand-staff')).toBeInTheDocument();
+    expect(container.querySelector('.wc-grand-staff-controls')).toHaveAttribute('data-export-hide');
+    expect((container.querySelector('.wc-grand-staff-sized') as HTMLElement).style.width).toBe('130%');
+
+    fireEvent.change(getByRole('slider'), { target: { value: '1.5' } });
+    expect(onMeta).toHaveBeenCalledWith({ grandStaff: { ...state.meta.grandStaff, scale: 1.5 } });
+  });
+
   it('prevents the default browser action on drop', () => {
     const { state } = boardWithCards();
     const onReorder = vi.fn();

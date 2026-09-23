@@ -26,6 +26,14 @@ export interface DiagramStyle {
   secondary: string;
 }
 
+/** One board-level MusicXML score, engraved above the card grid. */
+export interface GrandStaff {
+  musicXml: string;
+  fileName: string;
+  /** CSS display scale: 0.5 = 50%, 2 = 200%. */
+  scale: number;
+}
+
 /**
  * Boards carry two kinds of card. `kind` is the discriminant of a REAL
  * discriminated union (not a soft "extra optional field plus hand-written
@@ -102,6 +110,8 @@ export interface BoardMeta {
   cardText: CardText;
   style: DiagramStyle;
   diagramOrient: 'vertical' | 'horizontal';
+  /** Optional so boards created before MusicXML upload continue to load unchanged. */
+  grandStaff?: GrandStaff;
 }
 
 export interface BoardState {

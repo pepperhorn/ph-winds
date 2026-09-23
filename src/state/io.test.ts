@@ -36,6 +36,32 @@ describe('io', () => {
     expect(r.ok && r.state.meta.diagramOrient).toBe('vertical');
   });
 
+  it('round trips one optional board-level MusicXML grand staff', () => {
+    const s = createBoard('flute');
+    s.meta.grandStaff = {
+      musicXml: '<score-partwise version="4.0"><part-list/></score-partwise>',
+      fileName: 'warm-up.musicxml',
+      scale: 1.4,
+    };
+    const r = importBoardJson(exportBoardJson(s));
+    expect(r.ok && r.state.meta.grandStaff).toEqual(s.meta.grandStaff);
+  });
+
+  it('drops invalid MusicXML and defaults an invalid independent score scale', () => {
+    const invalid = createBoard('flute') as any;
+    invalid.meta.grandStaff = { musicXml: '<mei/>', fileName: 'wrong.xml', scale: 1 };
+    const bad = importBoardJson(JSON.stringify(invalid));
+    expect(bad.ok && bad.state.meta.grandStaff).toBeUndefined();
+
+    invalid.meta.grandStaff = {
+      musicXml: '<score-partwise version="4.0"><part-list/></score-partwise>',
+      fileName: 'score.musicxml',
+      scale: 99,
+    };
+    const scaled = importBoardJson(JSON.stringify(invalid));
+    expect(scaled.ok && scaled.state.meta.grandStaff?.scale).toBe(1);
+  });
+
   it('falls back to the instrument default horn when meta.horn is invalid', () => {
     const s = createBoard('tin-whistle') as any;
     s.meta.horn = 'X';

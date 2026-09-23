@@ -398,6 +398,7 @@ export const musicFontToVerovioFont = (font: MusicFont): VerovioFont =>
   font === "petaluma" ? "Petaluma" : "Bravura";
 
 const svgCache = new Map<string, Promise<string>>();
+let grandStaffCache: { musicXml: string; font: MusicFont; svg: Promise<string> } | null = null;
 let queue: Promise<unknown> = Promise.resolve();
 
 /** Engrave one note. Serialised through the single toolkit; memoised per pitch/clef/font. */
@@ -416,6 +417,21 @@ export function renderStaffSvg(p: Pitch, clef: "G" | "F", font: MusicFont): Prom
     queue = hit.catch(() => undefined);
   }
   return hit;
+}
+
+/** Engrave one uploaded MusicXML score through the same non-reentrant toolkit queue. */
+export function renderMusicXmlSvg(musicXml: string, font: MusicFont): Promise<string> {
+  if (grandStaffCache?.musicXml === musicXml && grandStaffCache.font === font) return grandStaffCache.svg;
+  const svg = queue.then(() => renderMeiToSvg(musicXml, {
+    font: musicFontToVerovioFont(font),
+    scale: STAFF_SCALE,
+  }));
+  svg.catch(() => {
+    if (grandStaffCache?.svg === svg) grandStaffCache = null;
+  });
+  grandStaffCache = { musicXml, font, svg };
+  queue = svg.catch(() => undefined);
+  return svg;
 }
 
 /** Resolves once the render queue is idle — lets callers (and tests) wait for pending engravings. */

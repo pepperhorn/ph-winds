@@ -21,7 +21,7 @@ vi.mock('verovio/esm', () => ({ VerovioToolkit: VerovioToolkitCtor }));
 vi.mock('./verovio-font-bravura.generated', () => ({ ZIP_B64: 'bravura-b64' }));
 vi.mock('./verovio-font-petaluma.generated', () => ({ ZIP_B64: 'petaluma-b64' }));
 
-import { getVerovioToolkit, isVerovioReady, onVerovioReady, renderMeiToSvg } from './verovio';
+import { getVerovioToolkit, isVerovioReady, onVerovioReady, pendingRenders, renderMeiToSvg, renderMusicXmlSvg } from './verovio';
 
 function fontAddCustomCalls() {
   return fakeToolkit.setOptions.mock.calls
@@ -72,5 +72,14 @@ describe('verovio lazy per-font registration', () => {
     await renderMeiToSvg('<mei/>', { font: 'Bravura' });
     await renderMeiToSvg('<mei/>', { font: 'Petaluma' });
     expect(fontAddCustomCalls()).toHaveLength(2);
+  });
+});
+
+describe('MusicXML rendering', () => {
+  it('loads MusicXML through Verovio and includes it in the shared render queue', async () => {
+    const xml = '<score-partwise version="4.0"><part-list/></score-partwise>';
+    await expect(renderMusicXmlSvg(xml, 'bravura')).resolves.toBe('<svg/>');
+    await pendingRenders();
+    expect(fakeToolkit.loadData).toHaveBeenLastCalledWith(xml);
   });
 });

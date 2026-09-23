@@ -4,6 +4,7 @@ import { isTextCard } from '@/state/types';
 import { CardView } from './TextCardView';
 import { hasFingering } from '@/music/instruments';
 import { toMidi } from '@/music/pitch';
+import { GrandStaffPanel } from './GrandStaffPanel';
 
 const ALIGN = { left: 'text-left', center: 'text-center', right: 'text-right' } as const;
 const TITLE = { S: 'text-xl', M: 'text-2xl', L: 'text-3xl' } as const;
@@ -115,6 +116,7 @@ export function Board({ state, onReorder, onEdit, onDuplicate, onRemove, onMeta,
     <section id="wc-board-export" className="wc-board rounded-3xl border border-hairline bg-surface p-8 shadow-glow">
       <ChromeInput f={meta.title} cls="wc-board-title" sizes={TITLE} weight="font-semibold" placeholder="Board title" onChange={(p) => onMeta({ title: { ...meta.title, ...p } })} />
       <ChromeInput f={meta.subtitle} cls="wc-board-subtitle mt-1 text-muted" sizes={SMALL} weight="font-normal" placeholder="Subtitle" onChange={(p) => onMeta({ subtitle: { ...meta.subtitle, ...p } })} />
+      <GrandStaffPanel meta={meta} onMeta={onMeta} />
       {items.length === 0
         ? <p className="wc-board-empty py-16 text-center text-sm text-muted">Pick a note on the keyboard, then &ldquo;Add to board&rdquo;.</p>
         : (

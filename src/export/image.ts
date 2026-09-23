@@ -28,7 +28,7 @@ const slug = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').r
  */
 async function waitForEngravedStaves(el: HTMLElement, timeoutMs = 5000): Promise<void> {
   const start = performance.now();
-  while (el.querySelector('.wc-staff-loading, .wc-staff--loading')) {
+  while (el.querySelector('.wc-staff-loading, .wc-staff--loading, .wc-grand-staff--loading')) {
     if (performance.now() - start > timeoutMs) return;
     await new Promise((resolve) => setTimeout(resolve, 16));
   }
