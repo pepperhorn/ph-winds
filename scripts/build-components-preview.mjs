@@ -15,6 +15,7 @@
 // because it is a bin-style script that writes on import and takes the output
 // path as `process.argv[2]`.
 
+import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -62,3 +63,10 @@ const result = spawnSync(process.execPath, [generator, out], { stdio: 'inherit' 
 
 if (result.error) fail(`running the generator failed (${result.error.message}).`);
 if (result.status !== 0) fail(`the generator exited with code ${result.status}.`);
+
+// This standalone public HTML bypasses Astro's page templates. Only the
+// production prebuild adds analytics; manual preview generation stays untracked.
+if (process.argv.includes('--production')) {
+  const analytics = '<script defer src="https://analytics.pepperhorn.com/script.js" data-website-id="637b9a93-8bc0-412a-bc22-e61f7e85aab6"></script>';
+  writeFileSync(out, readFileSync(out, 'utf8').replace('</head>', `${analytics}</head>`));
+}
